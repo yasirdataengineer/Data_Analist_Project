@@ -26,7 +26,58 @@ Aturan uang: hanya transfer dari **Petty Cash** yang mengurangi saldo kas; trans
 
 Upah lembur memakai aturan Kepmenakertrans 102/2004 untuk hari kerja: upah per jam = gaji pokok ÷ 173, jam pertama ×1,5, jam berikutnya ×2.
 
-Login otomatis memakai akun Telegram. `initData` dari Mini App diverifikasi di server dengan HMAC token bot, jadi tidak perlu username/password.
+## Cara membuka aplikasi
+
+1. **Di dalam Telegram (Mini App):** buka bot, tekan tombol menu **One Hub**. Login otomatis karena `initData` dari Telegram diverifikasi di server dengan HMAC token bot.
+2. **Sebagai aplikasi terpasang (PWA) di Android, iPhone, atau desktop:** buka URL aplikasi di browser, tekan **Masuk dengan Telegram**, lalu **Pasang**.
+   - **Android / Chrome / Edge desktop:** tombol **Pasang** di halaman utama memunculkan dialog instalasi.
+   - **iPhone / iPad:** buka di Safari → **Bagikan** → **Tambah ke Layar Utama**.
+
+### Masuk dengan Telegram atau WhatsApp (di luar Telegram)
+
+Tidak ada password. Aplikasi menampilkan kode 4 digit dan satu tombol sesuai pilihan:
+- **Buka Telegram** (`t.me/<bot>?start=login_…`), atau
+- **Buka WhatsApp** (`wa.me/<nomor bisnis>?text=MASUK XXXXXXXX`, pesannya sudah terisi dan tinggal dikirim).
+
+Bot Telegram atau nomor WhatsApp One Hub membalas dengan kode yang sama dan tombol **"Ya, ini saya"**. Setelah ditekan, aplikasi langsung masuk. Pengguna yang belum dikenal masuk ke status *menunggu akses* seperti biasa. Detailnya:
+- Link berlaku 5 menit dan hanya bisa dipakai sekali. Permintaan login terikat ke browser yang memulainya lewat cookie bertanda tangan.
+- Pencocokan kode mencegah orang lain mengirim link login miliknya ke korban.
+- `bot.js` mengonfirmasi ke server lewat `/auth/bot/lookup` dan `/auth/bot/confirm` dengan tanda tangan HMAC dari token bot, jadi hanya proses yang memegang token yang bisa mengonfirmasi.
+- Di WhatsApp, hanya nomor yang mengirim pesan `MASUK` yang bisa menekan tombol konfirmasinya.
+- Sesi berlaku 30 hari. Tombol **Keluar** ada di bagian bawah halaman utama.
+
+## Notifikasi & WhatsApp
+
+Semua notifikasi lewat satu pintu (`lib/notifier.js`). Setiap pengguna menerimanya di saluran yang terhubung dan dipilihnya di **Profil & notifikasi**: Telegram, WhatsApp, atau keduanya. Notifikasi grup (absen, laporan harian, dll.) tetap dikirim ke grup Telegram, karena WhatsApp Cloud API tidak bisa mengirim ke grup.
+
+Ada tiga cara nomor WhatsApp terhubung ke akun:
+1. **Karyawan sendiri:** di **Profil**, tekan **Hubungkan WhatsApp**, lalu kirim pesan `HUBUNGKAN …` dari nomornya dan konfirmasi. Nomor terverifikasi karena pesannya dikirim dari nomor tersebut.
+2. **Pemilik/admin:** isi nomornya di **User Admin / Management**.
+3. **Login pertama lewat WhatsApp:** membuat akun baru dengan status menunggu akses.
+
+### Setup WhatsApp Cloud API (sekali)
+
+1. Buat Meta App bertipe *Business*, lalu tambahkan produk **WhatsApp**. Daftarkan nomor bisnis khusus (belum dipakai di aplikasi WhatsApp biasa) dan verifikasi bisnis di Meta Business Manager.
+2. Buat **System User** dengan token permanen (izin `whatsapp_business_messaging`). Isi `WHATSAPP_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_BUSINESS_NUMBER`, dan `WHATSAPP_APP_SECRET`.
+3. **Webhook:** di Meta App > WhatsApp > Configuration:
+   - Callback URL: `https://<domain>/webhooks/whatsapp`.
+   - Verify token: sama dengan `WHATSAPP_VERIFY_TOKEN`.
+   - Subscribe field **messages**.
+4. **Template notifikasi:** buat di WhatsApp Manager dengan kategori **Utility**, bahasa **Indonesian (id)**, nama `onehub_notifikasi`. Contoh isi body:
+
+   ```
+   Notifikasi TJP-EJS One Hub:
+
+   {{1}}
+
+   Buka aplikasi One Hub untuk detail.
+   ```
+
+   `{{1}}` diisi teks notifikasi (tanpa baris baru; baris dipisah dengan " · ").
+
+Biaya: pesan template (notifikasi) dikenai tarif per pesan sesuai harga Meta untuk Indonesia. Login lewat WhatsApp dimulai oleh karyawan, jadi balasan konfirmasinya termasuk jendela layanan 24 jam.
+
+PWA menyimpan file statis (CSS, JS, ikon) untuk mempercepat pembukaan dan menampilkan halaman offline saat tidak ada sinyal. Halaman berisi data pribadi atau keuangan **tidak** disimpan di cache.
 
 ## Menjalankan
 
@@ -47,7 +98,7 @@ Tes: `npm test`
 
 1. Buat bot di [@BotFather](https://t.me/BotFather) dan salin tokennya ke `TELEGRAM_BOT_TOKEN`.
 2. Deploy `server.js` ke URL **HTTPS** publik (syarat Telegram Mini App) dan isi `WEBAPP_URL`.
-3. Jalankan `npm run bot`. Bot memasang tombol menu **One Hub** dan membalas `/start` dengan tombol untuk membuka aplikasi.
+3. Jalankan `npm run bot`. Bot memasang tombol menu **One Hub**, membalas `/start` dengan tombol untuk membuka aplikasi, dan menangani konfirmasi **Masuk dengan Telegram**. Bot menghubungi server di `WEBAPP_URL`, atau di `APP_INTERNAL_URL` bila diisi (mis. `http://localhost:3000` jika satu mesin).
 4. Notifikasi: tambahkan bot ke grup, kirim `/id`, lalu isi `TELEGRAM_NOTIFY_CHAT_ID` dengan ID tersebut.
 5. Isi `OWNER_TELEGRAM_IDS` dengan ID Telegram pemilik. Karyawan lain cukup membuka bot sekali (statusnya "menunggu akses", pemilik mendapat notifikasi), lalu pemilik/admin menambahkannya di **User Admin / Management**.
 
@@ -56,16 +107,18 @@ Tes: `npm test`
 ```
 server.js            entry point + konfigurasi dari env
 app.js               Express app, auth Telegram, routing
-bot.js               bot long-polling (menu button, /start, /id)
+bot.js               bot long-polling (menu button, /start, /id, konfirmasi login)
 routes/progress.js    Monitoring Progres (penugasan & evaluasi)
 routes/attendance.js  Sistem Absensi
 routes/payroll.js     Sistem Payroll (perhitungan di lib/payroll.js)
 routes/procurement.js Sistem Proc & Res
 routes/cash.js        Lap Pettycash, Approval & Transfer, Cash Flow Project (aturan di lib/finance.js)
 routes/users.js       User Admin / Management (peran di lib/access.js)
+routes/profile.js     Profil: akun terhubung & saluran notifikasi
+routes/whatsapp.js    Webhook WhatsApp (login & hubungkan nomor; helper di lib/whatsapp.js)
 lib/                  store JSON, validasi Telegram, sesi, tanggal (WIB)
 views/               template EJS
-public/              CSS + script Mini App
+public/              CSS, script, manifest PWA, service worker, ikon, halaman offline
 data/                db.json & foto upload (dibuat otomatis, tidak di-commit)
 ```
 

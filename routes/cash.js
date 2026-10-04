@@ -1,6 +1,5 @@
 // Petty Cash & Cash Flow Project: Lap Pettycash, Approval & Transfer, Cash Flow Project.
 const express = require('express');
-const { notify } = require('../lib/telegram');
 const { badRequest } = require('../lib/errors');
 const { todayKey, monthKey, rupiah } = require('../lib/dates');
 const { SOURCES, pettySummary, outstanding, projectCashflow, projectMovements } = require('../lib/finance');
@@ -10,7 +9,7 @@ const TABS = ['petty', 'approval', 'cashflow'];
 const toNumber = (v) => Number(String(v ?? '').replace(/[^\d]/g, '')) || 0;
 const isDate = (v) => /^\d{4}-\d{2}-\d{2}$/.test(v || '');
 
-module.exports = ({ store, config, need }) => {
+module.exports = ({ store, config, need, notifier }) => {
   const router = express.Router();
 
   // ?periode=YYYY-MM, or "semua" for all time. Defaults to this month.
@@ -78,7 +77,7 @@ module.exports = ({ store, config, need }) => {
       doc.requestId = r.id;
     }
     store.insert('pettyEntries', doc);
-    notify(config, config.notifyChatId, `🏦 Petty Cash: ${{ opening: 'saldo awal', topup: 'tambah saldo', refund: 'pengembalian sisa' }[type]} ${rupiah(amount)}`);
+    notifier.group(`🏦 Petty Cash: ${{ opening: 'saldo awal', topup: 'tambah saldo', refund: 'pengembalian sisa' }[type]} ${rupiah(amount)}`);
     res.redirect(`/kas?tab=petty&ok=Tersimpan`);
   });
 

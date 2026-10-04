@@ -1,0 +1,19 @@
+<%# Box for chat-confirmed login/link. Locals: channel ('telegram'|'whatsapp'), purpose, title, intro, startLabel, openLabel, steps %>
+<div class="card chat-login chat-<%= channel %>" data-chat-login="<%= channel %>" data-purpose="<%= purpose %>">
+  <h2><%= title %></h2>
+  <p class="muted"><%= intro %></p>
+  <div data-step="start">
+    <button class="btn btn-block <%= channel === 'whatsapp' ? 'btn-wa' : '' %>" type="button" data-action="start"><%= startLabel %></button>
+  </div>
+  <div data-step="wait" hidden>
+    <p class="muted small">Kode di layar ini:</p>
+    <div class="login-code" data-code>----</div>
+    <a class="btn btn-block <%= channel === 'whatsapp' ? 'btn-wa' : '' %>" data-open href="#" target="_blank" rel="noopener"><%= openLabel %></a>
+    <p class="muted small"><%- steps %></p>
+    <p class="muted small" data-timer></p>
+  </div>
+  <div data-step="done" hidden>
+    <p data-message></p>
+    <button class="btn btn-ghost" type="button" data-action="retry">Coba lagi</button>
+  </div>
+</div>

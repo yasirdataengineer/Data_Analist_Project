@@ -3,4 +3,5 @@
 <h1 class="h2">Akses belum aktif</h1>
 <p class="lead">Akun Telegram Anda sudah terdaftar. Minta pemilik atau admin menambahkan Anda di menu <b>User Admin / Management</b>, lalu buka ulang aplikasi.</p>
 <div class="card compact"><p class="muted">ID Telegram: <code><%= user.id %></code><%= user.username ? ' · @' + user.username : '' %></p></div>
+<form method="post" action="/logout"><button class="btn btn-ghost">Keluar / ganti akun</button></form>
 <%- include('partials/foot') %>

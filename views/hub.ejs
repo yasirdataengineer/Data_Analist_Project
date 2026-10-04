@@ -22,6 +22,14 @@
 <h1 class="display">Satu pintu untuk pekerjaan Anda.</h1>
 <p class="lead">Pilih sistem yang ingin digunakan.</p>
 
+<div class="card install" data-install hidden>
+  <div class="row">
+    <span><b>Pasang One Hub</b><br><span class="muted small">Buka langsung dari layar utama HP atau desktop.</span></span>
+    <button class="btn" type="button">Pasang</button>
+  </div>
+  <p class="muted small" data-install-ios hidden>Di iPhone/iPad: buka di <b>Safari</b>, ketuk tombol <b>Bagikan</b> (kotak dengan panah ke atas), lalu pilih <b>Tambah ke Layar Utama</b>.</p>
+</div>
+
 <% cards.forEach(c => { %>
 <a class="card card-link" href="<%= c.href %>">
   <svg viewBox="0 0 24 24" class="ico ico-lg" aria-hidden="true"><%- icons[c.icon] %></svg>
@@ -31,5 +39,8 @@
 </a>
 <% }) %>
 
-<footer class="footer"><%= appName %> · <%= ROLES[user.role] %><%= user.company ? ' ' + user.company : '' %></footer>
+<footer class="footer">
+  <span><%= appName %> · <%= ROLES[user.role] %><%= user.company ? ' ' + user.company : '' %></span>
+  <span class="footer-links"><a href="/profil">Profil &amp; notifikasi</a> · <form method="post" action="/logout" class="logout"><button class="linkish">Keluar</button></form></span>
+</footer>
 <%- include('partials/foot') %>

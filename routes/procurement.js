@@ -2,7 +2,6 @@
 // Flow: diajukan -> disetujui pemilik -> ditransfer (bukti + sumber dana) -> laporan PIC + foto bukti -> Laporan Close.
 const crypto = require('crypto');
 const express = require('express');
-const { notify } = require('../lib/telegram');
 const { badRequest } = require('../lib/errors');
 const { todayKey, rupiah } = require('../lib/dates');
 const { SOURCES, transferred, outstanding, pettySummary } = require('../lib/finance');
@@ -11,7 +10,7 @@ const { STATUS, decorateRequest } = require('../lib/requests');
 const toNumber = (v) => Number(String(v ?? '').replace(/[^\d]/g, '')) || 0;
 const isDate = (v) => /^\d{4}-\d{2}-\d{2}$/.test(v || '');
 
-module.exports = ({ store, upload, config, need }) => {
+module.exports = ({ store, upload, config, need, notifier }) => {
   const router = express.Router();
 
   const userName = (id) => store.find('users', (u) => u.id === id)?.name || '-';
@@ -84,10 +83,9 @@ module.exports = ({ store, upload, config, need }) => {
       transfers: [],
       status: 'pending',
     });
-    const owners = store.filter('users', (u) => u.role === 'owner' && u.active);
     const text = `🛒 ${r.number} · Pengajuan ${type.name.toLowerCase()} ${rupiah(amount)}\n${req.user.name}${project ? ` — ${project.code}` : ''}\n${description}`;
-    owners.forEach((o) => notify(config, o.id, text));
-    notify(config, config.notifyChatId, text);
+    notifier.owners(text);
+    notifier.group(text);
     res.redirect(`/proc/${r.id}?ok=Pengajuan terkirim`);
   });
 
@@ -149,7 +147,7 @@ module.exports = ({ store, upload, config, need }) => {
       status: approve ? 'approved' : 'rejected',
       approval: { by: req.user.id, at: new Date().toISOString(), amount, note: (req.body.note || '').trim() },
     });
-    notify(config, r.userId, `${r.number} ${approve ? `✅ disetujui ${rupiah(amount)}, menunggu transfer` : '❌ ditolak'}${req.body.note ? `\n${req.body.note}` : ''}`);
+    notifier.user(r.userId, `${r.number} ${approve ? `✅ disetujui ${rupiah(amount)}, menunggu transfer` : '❌ ditolak'}${req.body.note ? `\n${req.body.note}` : ''}`);
     const ok = `ok=Pengajuan ${approve ? 'disetujui' : 'ditolak'}`;
     res.redirect(req.body.back === 'approval' ? `/kas?tab=approval&${ok}` : `/proc/${r.id}?${ok}`);
   });
@@ -183,7 +181,7 @@ module.exports = ({ store, upload, config, need }) => {
       transfers: [...(r.transfers || []), transfer],
       status: r.status === 'closed' ? 'closed' : 'transferred',
     });
-    notify(config, r.userId, `💸 ${r.number}: dana ${rupiah(amount)} sudah ditransfer (${SOURCES[transfer.source]}). Setelah dipakai, tutup dengan laporan dan foto bukti.`);
+    notifier.user(r.userId, `💸 ${r.number}: dana ${rupiah(amount)} sudah ditransfer (${SOURCES[transfer.source]}). Setelah dipakai, tutup dengan laporan dan foto bukti.`);
     res.redirect(`/proc/${r.id}?ok=Transfer tercatat`);
   });
 
@@ -201,11 +199,7 @@ module.exports = ({ store, upload, config, need }) => {
       report: { actualAmount: actual, note: (req.body.note || '').trim(), photos, by: req.user.id, at: new Date().toISOString() },
     });
     const diff = transferred(r) - actual;
-    notify(
-      config,
-      config.notifyChatId,
-      `🧾 Laporan Close ${r.number} · ${req.user.name}: terpakai ${rupiah(actual)}${diff ? ` (${diff > 0 ? 'sisa' : 'kurang'} ${rupiah(Math.abs(diff))})` : ''}`
-    );
+    notifier.group(`🧾 Laporan Close ${r.number} · ${req.user.name}: terpakai ${rupiah(actual)}${diff ? ` (${diff > 0 ? 'sisa' : 'kurang'} ${rupiah(Math.abs(diff))})` : ''}`);
     res.redirect(`/proc/${r.id}?ok=Laporan ditutup`);
   });
 
