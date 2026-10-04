@@ -1,0 +1,42 @@
+<%- include('../partials/head', { title: project.name, back: '/progres' }) %>
+<%- include('../partials/pagehead', { back: '/progres', eyebrow: project.code ? 'Proyek ' + project.code : 'Proyek', heading: project.name, sub: (project.location || '') + ' · PIC ' + project.picName + (project.target ? ' · Target ' + d.formatDate(project.target) : '') }) %>
+
+<div class="card">
+  <div class="row"><span class="muted">Progres</span><b class="big"><%= project.progress %>%</b></div>
+  <div class="bar bar-lg"><span style="width: <%= project.progress %>%"></span></div>
+</div>
+
+<% if (photos.length) { %>
+<h3 class="section">Foto terbaru</h3>
+<div class="gallery">
+  <% photos.slice(0, 9).forEach(ph => { %>
+    <a href="<%= ph.src %>" target="_blank"><img src="<%= ph.src %>" alt="Foto <%= d.formatDate(ph.at) %>" loading="lazy"></a>
+  <% }) %>
+</div>
+<% } %>
+
+<% if (project.picId === user.id || isAdmin) { %>
+<h3 class="section">Update progres</h3>
+<form class="card form" method="post" action="/progres/<%= project.id %>/update" enctype="multipart/form-data">
+  <label>Persentase: <output id="pv"><%= project.progress %></output>%
+    <input type="range" name="progress" min="0" max="100" step="1" value="<%= project.progress %>" oninput="pv.value=this.value">
+  </label>
+  <label>Catatan<textarea name="note" rows="3" placeholder="Pekerjaan yang diselesaikan, kendala…"></textarea></label>
+  <label>Foto (maks. 6)<input type="file" name="photos" accept="image/*" multiple capture="environment"></label>
+  <button class="btn">Simpan update</button>
+</form>
+<% } %>
+
+<h3 class="section">Riwayat update</h3>
+<% if (!history.length) { %><div class="card empty">Belum ada update.</div><% } %>
+<ol class="timeline">
+  <% history.forEach(h => { %>
+    <li>
+      <div class="row"><b><%= h.authorName %></b><span class="muted"><%= d.formatDateTime(h.createdAt) %></span></div>
+      <p><span class="tag"><%= h.from %>% → <%= h.to %>%</span></p>
+      <% if (h.note) { %><p><%= h.note %></p><% } %>
+      <% if (h.photos && h.photos.length) { %><div class="gallery small"><% h.photos.forEach(src => { %><a href="<%= src %>" target="_blank"><img src="<%= src %>" alt="" loading="lazy"></a><% }) %></div><% } %>
+    </li>
+  <% }) %>
+</ol>
+<%- include('../partials/foot') %>

@@ -1,0 +1,40 @@
+<%- include('../partials/head', { title: 'Sistem Absensi', back: '/' }) %>
+<%- include('../partials/pagehead', { back: '/', eyebrow: 'Sistem Absensi', heading: d.formatDate(today), sub: '' }) %>
+
+<div class="card">
+  <div class="clock" data-clock>--:--</div>
+  <div class="row two">
+    <div><span class="muted">Masuk</span><b><%= record ? d.formatTime(record.checkIn) : '-' %></b></div>
+    <div><span class="muted">Pulang</span><b><%= record && record.checkOut ? d.formatTime(record.checkOut) : '-' %></b></div>
+  </div>
+  <% if (!record || !record.checkOut) { %>
+  <form method="post" action="/absensi/<%= record ? 'pulang' : 'masuk' %>" enctype="multipart/form-data" data-geo>
+    <input type="hidden" name="lat"><input type="hidden" name="lng"><input type="hidden" name="accuracy">
+    <label>Foto selfie (opsional)<input type="file" name="selfie" accept="image/*" capture="user"></label>
+    <button class="btn btn-block <%= record ? 'btn-warn' : '' %>"><%= record ? 'Absen pulang' : 'Absen masuk' %></button>
+    <p class="muted small" data-geo-status>Lokasi akan direkam bila diizinkan.</p>
+  </form>
+  <% } else { %>
+    <p class="ok">✓ Absensi hari ini lengkap.</p>
+  <% } %>
+</div>
+
+<div class="grid">
+  <a class="card card-link tile" href="/absensi/rencana">
+    <h2>Rencana pekerjaan</h2>
+    <p class="muted"><%= plan ? plan.tasks.length + ' pekerjaan direncanakan' : 'Belum diisi' %></p>
+  </a>
+  <a class="card card-link tile" href="/absensi/laporan">
+    <h2>Laporan progres</h2>
+    <p class="muted"><%= report ? 'Sudah dikirim' : 'Belum dikirim' %></p>
+  </a>
+  <a class="card card-link tile" href="/absensi/lembur">
+    <h2>Pengajuan lembur</h2>
+    <p class="muted"><%= pendingOvertime %> menunggu<% if (isAdmin && approvals) { %> · <b><%= approvals %> perlu persetujuan</b><% } %></p>
+  </a>
+  <a class="card card-link tile" href="/absensi/riwayat">
+    <h2>Riwayat absensi</h2>
+    <p class="muted">60 hari terakhir</p>
+  </a>
+</div>
+<%- include('../partials/foot') %>

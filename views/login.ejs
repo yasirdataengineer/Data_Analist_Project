@@ -1,0 +1,38 @@
+<%- include('partials/head', { title: 'Masuk', user: null }) %>
+<p class="eyebrow">TJP / EJS</p>
+<h1 class="display">Satu pintu untuk pekerjaan Anda.</h1>
+<p class="lead" id="login-status">Menghubungkan akun Telegram…</p>
+
+<div class="card" id="not-telegram" hidden>
+  <h2>Buka lewat Telegram</h2>
+  <p>Aplikasi ini berjalan sebagai Mini App. Buka bot TJP-EJS di Telegram lalu tekan tombol <b>One Hub</b>.</p>
+</div>
+
+<% if (devLogin) { %>
+<form class="card" method="post" action="/auth/dev">
+  <h2>Login development</h2>
+  <label>Nama<input name="name" value="Pak yasir"></label>
+  <label>ID Telegram<input name="id" value="dev-1"></label>
+  <button class="btn">Masuk</button>
+</form>
+<% } %>
+
+<script>
+  document.addEventListener('DOMContentLoaded', async () => {
+    const tg = window.Telegram && Telegram.WebApp;
+    const status = document.getElementById('login-status');
+    if (!tg || !tg.initData) {
+      status.textContent = 'Tidak terdeteksi di dalam Telegram.';
+      document.getElementById('not-telegram').hidden = false;
+      return;
+    }
+    const res = await fetch('/auth/telegram', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ initData: tg.initData }),
+    });
+    if (res.ok) location.replace('/');
+    else status.textContent = 'Verifikasi Telegram gagal. Tutup lalu buka ulang aplikasi.';
+  });
+</script>
+<%- include('partials/foot') %>

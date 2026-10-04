@@ -1,0 +1,38 @@
+<%- include('../partials/head', { title: 'Pengajuan lembur', back: '/absensi' }) %>
+<%- include('../partials/pagehead', { back: '/absensi', eyebrow: 'Sistem Absensi', heading: 'Pengajuan lembur' }) %>
+<% const label = { pending: 'Menunggu', approved: 'Disetujui', rejected: 'Ditolak' }; %>
+
+<% if (isAdmin && pending.length) { %>
+<h3 class="section">Perlu persetujuan</h3>
+<% pending.forEach(o => { %>
+  <div class="card">
+    <div class="row"><b><%= o.userName %></b><span class="muted"><%= d.formatDate(o.date) %> · <%= o.start %>–<%= o.end %> (<%= (o.minutes / 60).toFixed(1) %> jam)</span></div>
+    <p><%= o.reason %></p>
+    <div class="actions">
+      <form method="post" action="/absensi/lembur/<%= o.id %>/approve"><button class="btn">Setujui</button></form>
+      <form method="post" action="/absensi/lembur/<%= o.id %>/reject"><button class="btn btn-ghost">Tolak</button></form>
+    </div>
+  </div>
+<% }) %>
+<% } %>
+
+<h3 class="section">Ajukan lembur</h3>
+<form class="card form" method="post" action="/absensi/lembur">
+  <label>Tanggal<input type="date" name="date" value="<%= today %>" required></label>
+  <div class="row two">
+    <label>Mulai<input type="time" name="start" value="17:00" required></label>
+    <label>Selesai<input type="time" name="end" value="20:00" required></label>
+  </div>
+  <label>Alasan / pekerjaan *<textarea name="reason" rows="3" required></textarea></label>
+  <button class="btn">Kirim pengajuan</button>
+</form>
+
+<h3 class="section">Pengajuan saya</h3>
+<% if (!mine.length) { %><div class="card empty">Belum ada pengajuan.</div><% } %>
+<% mine.forEach(o => { %>
+  <div class="card compact">
+    <div class="row"><b><%= d.formatDate(o.date) %> · <%= o.start %>–<%= o.end %></b><span class="status status-<%= o.status %>"><%= label[o.status] %></span></div>
+    <p class="muted"><%= o.reason %></p>
+  </div>
+<% }) %>
+<%- include('../partials/foot') %>

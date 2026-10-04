@@ -1,0 +1,16 @@
+<%- include('../partials/head', { title: 'Rencana pekerjaan', back: '/absensi' }) %>
+<%- include('../partials/pagehead', { back: '/absensi', eyebrow: 'Sistem Absensi', heading: 'Rencana pekerjaan', sub: d.formatDate(date) }) %>
+<form class="card form" method="post" action="/absensi/rencana">
+  <label>Tanggal<input type="date" name="date" value="<%= date %>"></label>
+  <label>Proyek
+    <select name="projectId">
+      <option value="">— Tanpa proyek —</option>
+      <% projects.forEach(p => { %><option value="<%= p.id %>" <%= plan && plan.projectId === p.id ? 'selected' : '' %>><%= p.code ? p.code + ' · ' : '' %><%= p.name %></option><% }) %>
+    </select>
+  </label>
+  <label>Daftar pekerjaan (satu per baris)
+    <textarea name="tasks" rows="7" required placeholder="Terminasi kabel panel UPS&#10;Cek grounding battery rack"><%= plan ? plan.tasks.join('\n') : '' %></textarea>
+  </label>
+  <button class="btn">Simpan rencana</button>
+</form>
+<%- include('../partials/foot') %>

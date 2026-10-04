@@ -1,0 +1,15 @@
+<%- include('../partials/head', { title: 'Riwayat absensi', back: '/absensi' }) %>
+<%- include('../partials/pagehead', { back: '/absensi', eyebrow: 'Sistem Absensi', heading: 'Riwayat absensi' }) %>
+<% if (!rows.length) { %><div class="card empty">Belum ada data absensi.</div><% } else { %>
+<div class="card table-card">
+  <table>
+    <thead><tr><th>Tanggal</th><th>Masuk</th><th>Pulang</th></tr></thead>
+    <tbody>
+      <% rows.forEach(r => { %>
+        <tr><td><%= d.formatDate(r.date) %></td><td><%= d.formatTime(r.checkIn) %></td><td><%= d.formatTime(r.checkOut) %></td></tr>
+      <% }) %>
+    </tbody>
+  </table>
+</div>
+<% } %>
+<%- include('../partials/foot') %>

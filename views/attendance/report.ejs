@@ -1,0 +1,20 @@
+<%- include('../partials/head', { title: 'Laporan progres', back: '/absensi' }) %>
+<%- include('../partials/pagehead', { back: '/absensi', eyebrow: 'Sistem Absensi', heading: 'Laporan progres harian', sub: d.formatDate(date) }) %>
+<form class="card form" method="post" action="/absensi/laporan" enctype="multipart/form-data">
+  <% if (plan) { %>
+    <fieldset>
+      <legend>Pekerjaan yang selesai</legend>
+      <% plan.tasks.forEach(t => { %>
+        <label class="check"><input type="checkbox" name="done" value="<%= t %>" <%= report && report.done.includes(t) ? 'checked' : '' %>> <%= t %></label>
+      <% }) %>
+    </fieldset>
+  <% } else { %>
+    <p class="muted">Belum ada rencana pekerjaan hari ini. <a href="/absensi/rencana">Isi rencana</a></p>
+  <% } %>
+  <label>Ringkasan *<textarea name="summary" rows="4" required><%= report ? report.summary : '' %></textarea></label>
+  <label>Kendala<textarea name="issues" rows="2"><%= report ? report.issues : '' %></textarea></label>
+  <label>Foto (maks. 6)<input type="file" name="photos" accept="image/*" multiple capture="environment"></label>
+  <% if (report && report.photos.length) { %><div class="gallery small"><% report.photos.forEach(src => { %><img src="<%= src %>" alt=""><% }) %></div><% } %>
+  <button class="btn"><%= report ? 'Perbarui laporan' : 'Kirim laporan' %></button>
+</form>
+<%- include('../partials/foot') %>

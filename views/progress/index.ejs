@@ -1,0 +1,30 @@
+<%- include('../partials/head', { title: 'Monitoring Progres', back: '/' }) %>
+<%- include('../partials/pagehead', { back: '/', eyebrow: 'Monitoring Progres', heading: 'Progres pekerjaan', sub: '' }) %>
+
+<div class="stats">
+  <div class="stat"><span class="num"><%= projects.length %></span><span>Proyek</span></div>
+  <div class="stat"><span class="num"><%= avg %>%</span><span>Rata-rata</span></div>
+  <div class="stat"><span class="num"><%= projects.filter(p => p.progress >= 100).length %></span><span>Selesai</span></div>
+</div>
+
+<form class="search" method="get">
+  <input name="q" value="<%= q %>" placeholder="Cari kode, nama, lokasi…">
+  <a class="btn" href="/progres/baru">+ Proyek</a>
+</form>
+
+<% if (!projects.length) { %>
+  <div class="card empty">Belum ada proyek. Tambahkan proyek pertama.</div>
+<% } %>
+<% projects.forEach(p => { %>
+  <a class="card card-link project" href="/progres/<%= p.id %>">
+    <% if (p.latestPhoto) { %><img class="thumb" src="<%= p.latestPhoto %>" alt="" loading="lazy"><% } %>
+    <div class="grow">
+      <% if (p.code) { %><span class="tag"><%= p.code %></span><% } %>
+      <h2><%= p.name %></h2>
+      <p class="muted"><%= p.location || '—' %> · PIC <%= p.picName %></p>
+      <div class="bar"><span style="width: <%= p.progress %>%"></span></div>
+      <p class="row"><b><%= p.progress %>%</b><span class="muted"><%= p.lastUpdate ? 'Update ' + d.formatDateTime(p.lastUpdate.createdAt) : 'Belum ada update' %></span></p>
+    </div>
+  </a>
+<% }) %>
+<%- include('../partials/foot') %>

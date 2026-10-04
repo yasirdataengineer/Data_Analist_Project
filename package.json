@@ -1,0 +1,34 @@
+{
+  "name": "tjp-ejs-one-hub",
+  "version": "1.0.0",
+  "description": "TJP-EJS One Hub — Telegram Mini App untuk Monitoring Progres dan Sistem Absensi",
+  "main": "server.js",
+  "directories": {
+    "lib": "lib",
+    "test": "test"
+  },
+  "scripts": {
+    "start": "node --env-file-if-exists=.env server.js",
+    "bot": "node --env-file-if-exists=.env bot.js",
+    "dev": "DEV_LOGIN=1 node --watch --env-file-if-exists=.env server.js",
+    "test": "node --test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yasirdataengineer/Data_Analist_Project.git"
+  },
+  "license": "UNLICENSED",
+  "bugs": {
+    "url": "https://github.com/yasirdataengineer/Data_Analist_Project/issues"
+  },
+  "homepage": "https://github.com/yasirdataengineer/Data_Analist_Project#readme",
+  "dependencies": {
+    "ejs": "^3.1.10",
+    "express": "^4.22.3",
+    "multer": "^2.4.0"
+  },
+  "private": true,
+  "engines": {
+    "node": ">=22.9"
+  }
+}
