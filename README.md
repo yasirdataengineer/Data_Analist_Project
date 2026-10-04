@@ -33,13 +33,49 @@ Upah lembur memakai aturan Kepmenakertrans 102/2004 untuk hari kerja: upah per j
    - **Android / Chrome / Edge desktop:** tombol **Pasang** di halaman utama memunculkan dialog instalasi.
    - **iPhone / iPad:** buka di Safari → **Bagikan** → **Tambah ke Layar Utama**.
 
-### Masuk dengan Telegram (di luar Telegram)
+### Masuk dengan Telegram atau WhatsApp (di luar Telegram)
 
-Tidak ada password. Aplikasi menampilkan kode 4 digit dan tombol **Buka Telegram** (`t.me/<bot>?start=login_…`). Bot menampilkan kode yang sama dan meminta konfirmasi **"Ya, ini saya"**. Setelah dikonfirmasi, aplikasi langsung masuk. Detailnya:
+Tidak ada password. Aplikasi menampilkan kode 4 digit dan satu tombol sesuai pilihan:
+- **Buka Telegram** (`t.me/<bot>?start=login_…`), atau
+- **Buka WhatsApp** (`wa.me/<nomor bisnis>?text=MASUK XXXXXXXX`, pesannya sudah terisi dan tinggal dikirim).
+
+Bot Telegram atau nomor WhatsApp One Hub membalas dengan kode yang sama dan tombol **"Ya, ini saya"**. Setelah ditekan, aplikasi langsung masuk. Pengguna yang belum dikenal masuk ke status *menunggu akses* seperti biasa. Detailnya:
 - Link berlaku 5 menit dan hanya bisa dipakai sekali. Permintaan login terikat ke browser yang memulainya lewat cookie bertanda tangan.
 - Pencocokan kode mencegah orang lain mengirim link login miliknya ke korban.
 - `bot.js` mengonfirmasi ke server lewat `/auth/bot/lookup` dan `/auth/bot/confirm` dengan tanda tangan HMAC dari token bot, jadi hanya proses yang memegang token yang bisa mengonfirmasi.
+- Di WhatsApp, hanya nomor yang mengirim pesan `MASUK` yang bisa menekan tombol konfirmasinya.
 - Sesi berlaku 30 hari. Tombol **Keluar** ada di bagian bawah halaman utama.
+
+## Notifikasi & WhatsApp
+
+Semua notifikasi lewat satu pintu (`lib/notifier.js`). Setiap pengguna menerimanya di saluran yang terhubung dan dipilihnya di **Profil & notifikasi**: Telegram, WhatsApp, atau keduanya. Notifikasi grup (absen, laporan harian, dll.) tetap dikirim ke grup Telegram, karena WhatsApp Cloud API tidak bisa mengirim ke grup.
+
+Ada tiga cara nomor WhatsApp terhubung ke akun:
+1. **Karyawan sendiri:** di **Profil**, tekan **Hubungkan WhatsApp**, lalu kirim pesan `HUBUNGKAN …` dari nomornya dan konfirmasi. Nomor terverifikasi karena pesannya dikirim dari nomor tersebut.
+2. **Pemilik/admin:** isi nomornya di **User Admin / Management**.
+3. **Login pertama lewat WhatsApp:** membuat akun baru dengan status menunggu akses.
+
+### Setup WhatsApp Cloud API (sekali)
+
+1. Buat Meta App bertipe *Business*, lalu tambahkan produk **WhatsApp**. Daftarkan nomor bisnis khusus (belum dipakai di aplikasi WhatsApp biasa) dan verifikasi bisnis di Meta Business Manager.
+2. Buat **System User** dengan token permanen (izin `whatsapp_business_messaging`). Isi `WHATSAPP_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_BUSINESS_NUMBER`, dan `WHATSAPP_APP_SECRET`.
+3. **Webhook:** di Meta App > WhatsApp > Configuration:
+   - Callback URL: `https://<domain>/webhooks/whatsapp`.
+   - Verify token: sama dengan `WHATSAPP_VERIFY_TOKEN`.
+   - Subscribe field **messages**.
+4. **Template notifikasi:** buat di WhatsApp Manager dengan kategori **Utility**, bahasa **Indonesian (id)**, nama `onehub_notifikasi`. Contoh isi body:
+
+   ```
+   Notifikasi TJP-EJS One Hub:
+
+   {{1}}
+
+   Buka aplikasi One Hub untuk detail.
+   ```
+
+   `{{1}}` diisi teks notifikasi (tanpa baris baru; baris dipisah dengan " · ").
+
+Biaya: pesan template (notifikasi) dikenai tarif per pesan sesuai harga Meta untuk Indonesia. Login lewat WhatsApp dimulai oleh karyawan, jadi balasan konfirmasinya termasuk jendela layanan 24 jam.
 
 PWA menyimpan file statis (CSS, JS, ikon) untuk mempercepat pembukaan dan menampilkan halaman offline saat tidak ada sinyal. Halaman berisi data pribadi atau keuangan **tidak** disimpan di cache.
 
@@ -78,6 +114,8 @@ routes/payroll.js     Sistem Payroll (perhitungan di lib/payroll.js)
 routes/procurement.js Sistem Proc & Res
 routes/cash.js        Lap Pettycash, Approval & Transfer, Cash Flow Project (aturan di lib/finance.js)
 routes/users.js       User Admin / Management (peran di lib/access.js)
+routes/profile.js     Profil: akun terhubung & saluran notifikasi
+routes/whatsapp.js    Webhook WhatsApp (login & hubungkan nomor; helper di lib/whatsapp.js)
 lib/                  store JSON, validasi Telegram, sesi, tanggal (WIB)
 views/               template EJS
 public/              CSS, script, manifest PWA, service worker, ikon, halaman offline

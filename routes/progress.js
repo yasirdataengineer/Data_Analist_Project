@@ -2,10 +2,9 @@
 // Owner assigns work to a PIC; the PIC fills in percentage, result or obstacles, and latest photos;
 // the owner reviews and decides Open or Closed.
 const express = require('express');
-const { notify } = require('../lib/telegram');
 const { badRequest } = require('../lib/errors');
 
-module.exports = ({ store, upload, config, need }) => {
+module.exports = ({ store, upload, config, need, notifier }) => {
   const router = express.Router();
 
   const userName = (id) => store.find('users', (u) => u.id === id)?.name || '-';
@@ -71,7 +70,7 @@ module.exports = ({ store, upload, config, need }) => {
       status: 'open',
       createdBy: req.user.id,
     });
-    notify(config, pic.id, `📌 Penugasan baru dari ${req.user.name}:\n<b>${a.title}</b>${a.dueDate ? `\nTarget: ${a.dueDate}` : ''}`);
+    notifier.user(pic.id, `📌 Penugasan baru dari ${req.user.name}:\n<b>${a.title}</b>${a.dueDate ? `\nTarget: ${a.dueDate}` : ''}`);
     res.redirect(`/progres/${a.id}?ok=Penugasan dibuat`);
   });
 
@@ -113,11 +112,7 @@ module.exports = ({ store, upload, config, need }) => {
       photos: (req.files || []).map((f) => `/uploads/${f.filename}`),
     });
     store.update('assignments', a.id, { progress });
-    notify(
-      config,
-      config.notifyChatId,
-      `📈 <b>${a.title}</b>: ${a.progress}% → ${progress}%\nPIC: ${req.user.name}${result ? `\nHasil: ${result}` : ''}${issue ? `\nKendala: ${issue}` : ''}`
-    );
+    notifier.group(`📈 <b>${a.title}</b>: ${a.progress}% → ${progress}%\nPIC: ${req.user.name}${result ? `\nHasil: ${result}` : ''}${issue ? `\nKendala: ${issue}` : ''}`);
     res.redirect(`/progres/${a.id}?ok=Progres tersimpan`);
   });
 
@@ -135,7 +130,7 @@ module.exports = ({ store, upload, config, need }) => {
       photos: [],
     });
     store.update('assignments', a.id, { status, evaluatedBy: req.user.id, evaluatedAt: new Date().toISOString() });
-    notify(config, a.picId, `Evaluasi <b>${a.title}</b>: ${status === 'closed' ? '✅ Closed' : '🔁 Open'}${req.body.note ? `\n${req.body.note}` : ''}`);
+    notifier.user(a.picId, `Evaluasi <b>${a.title}</b>: ${status === 'closed' ? '✅ Closed' : '🔁 Open'}${req.body.note ? `\n${req.body.note}` : ''}`);
     res.redirect(`/progres/${a.id}?ok=Evaluasi tersimpan`);
   });
 

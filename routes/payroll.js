@@ -1,6 +1,5 @@
 // Sistem Payroll: penggajian, rekap bulanan, koreksi lembur, kasbon.
 const express = require('express');
-const { notify } = require('../lib/telegram');
 const { badRequest } = require('../lib/errors');
 const { todayKey, monthKey, minutesBetween, rupiah, formatMonth } = require('../lib/dates');
 const { payslipFor } = require('../lib/payroll');
@@ -8,7 +7,7 @@ const { payslipFor } = require('../lib/payroll');
 const MONTH_RE = /^\d{4}-\d{2}$/;
 const TIME_RE = /^\d{2}:\d{2}$/;
 
-module.exports = ({ store, config, need }) => {
+module.exports = ({ store, config, need, notifier }) => {
   const router = express.Router();
 
   const userName = (id) => store.find('users', (u) => u.id === id)?.name || '-';
@@ -73,7 +72,7 @@ module.exports = ({ store, config, need }) => {
       const slip = payslipFor(store, userId, month);
       if (!slip.configured) continue;
       store.insert('payrolls', { userId, month, slip, finalizedBy: req.user.id });
-      notify(config, userId, `💰 Slip gaji ${formatMonth(month)} sudah terbit. Total diterima: <b>${rupiah(slip.net)}</b>`);
+      notifier.user(userId, `💰 Slip gaji ${formatMonth(month)} sudah terbit. Total diterima: <b>${rupiah(slip.net)}</b>`);
       count++;
     }
     res.redirect(`/payroll/rekap?bulan=${month}&ok=${count} slip difinalisasi`);
@@ -134,7 +133,7 @@ module.exports = ({ store, config, need }) => {
     const status = req.params.action === 'approve' ? 'approved' : 'rejected';
     store.update('overtime', ot.id, { status, decidedBy: req.user.id, decidedAt: new Date().toISOString() });
     // The requester's Telegram user id doubles as their private chat id with the bot.
-    notify(config, ot.userId, `Pengajuan lembur ${ot.date} ${ot.start}–${ot.end} ${status === 'approved' ? '✅ disetujui' : '❌ ditolak'} oleh ${req.user.name}`);
+    notifier.user(ot.userId, `Pengajuan lembur ${ot.date} ${ot.start}–${ot.end} ${status === 'approved' ? '✅ disetujui' : '❌ ditolak'} oleh ${req.user.name}`);
     res.redirect('/payroll/lembur?ok=Pengajuan diproses');
   });
 
@@ -155,7 +154,7 @@ module.exports = ({ store, config, need }) => {
     const deductMonth = pickMonth(req.body.deductMonth);
     assertOpen(req.user.id, deductMonth);
     store.insert('cashAdvances', { userId: req.user.id, amount, reason: req.body.reason.trim(), deductMonth, status: 'pending' });
-    notify(config, config.notifyChatId, `💵 Kasbon ${req.user.name}: ${rupiah(amount)} (potong ${formatMonth(deductMonth)})\n${req.body.reason.trim()}`);
+    notifier.group(`💵 Kasbon ${req.user.name}: ${rupiah(amount)} (potong ${formatMonth(deductMonth)})\n${req.body.reason.trim()}`);
     res.redirect('/payroll/kasbon?ok=Pengajuan kasbon terkirim');
   });
 
@@ -167,7 +166,7 @@ module.exports = ({ store, config, need }) => {
     assertOpen(c.userId, c.deductMonth);
     const status = req.params.action === 'approve' ? 'approved' : 'rejected';
     store.update('cashAdvances', c.id, { status, decidedBy: req.user.id, decidedAt: new Date().toISOString() });
-    notify(config, c.userId, `Kasbon ${rupiah(c.amount)} ${status === 'approved' ? '✅ disetujui' : '❌ ditolak'} oleh ${req.user.name}`);
+    notifier.user(c.userId, `Kasbon ${rupiah(c.amount)} ${status === 'approved' ? '✅ disetujui' : '❌ ditolak'} oleh ${req.user.name}`);
     res.redirect('/payroll/kasbon?ok=Kasbon diproses');
   });
 
@@ -210,7 +209,7 @@ module.exports = ({ store, config, need }) => {
       reason: reason.trim(),
       status: 'pending',
     });
-    notify(config, config.notifyChatId, `🛠️ Koreksi lembur ${req.user.name} ${targetDate} → ${start}–${end}\n${reason.trim()}`);
+    notifier.group(`🛠️ Koreksi lembur ${req.user.name} ${targetDate} → ${start}–${end}\n${reason.trim()}`);
     res.redirect('/payroll/koreksi?ok=Koreksi lembur terkirim');
   });
 
@@ -250,7 +249,7 @@ module.exports = ({ store, config, need }) => {
       }
     }
     store.update('overtimeCorrections', c.id, { status, decidedBy: req.user.id, decidedAt: new Date().toISOString() });
-    notify(config, c.userId, `Koreksi lembur ${c.date} ${c.start}–${c.end} ${status === 'approved' ? '✅ disetujui' : '❌ ditolak'} oleh ${req.user.name}`);
+    notifier.user(c.userId, `Koreksi lembur ${c.date} ${c.start}–${c.end} ${status === 'approved' ? '✅ disetujui' : '❌ ditolak'} oleh ${req.user.name}`);
     res.redirect('/payroll/koreksi?ok=Koreksi diproses');
   });
 

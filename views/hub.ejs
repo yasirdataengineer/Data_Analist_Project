@@ -41,6 +41,6 @@
 
 <footer class="footer">
   <span><%= appName %> · <%= ROLES[user.role] %><%= user.company ? ' ' + user.company : '' %></span>
-  <form method="post" action="/logout" class="logout"><button class="linkish">Keluar</button></form>
+  <span class="footer-links"><a href="/profil">Profil &amp; notifikasi</a> · <form method="post" action="/logout" class="logout"><button class="linkish">Keluar</button></form></span>
 </footer>
 <%- include('partials/foot') %>

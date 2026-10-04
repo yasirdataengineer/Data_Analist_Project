@@ -1,10 +1,9 @@
 // Sistem Absensi: check-in/out, rencana pekerjaan, laporan progres, pengajuan lembur.
 const express = require('express');
-const { notify } = require('../lib/telegram');
 const { badRequest } = require('../lib/errors');
 const { todayKey, minutesBetween } = require('../lib/dates');
 
-module.exports = ({ store, upload, config, need }) => {
+module.exports = ({ store, upload, config, need, notifier }) => {
   const router = express.Router();
 
   // Management/owner only see the team report; personal attendance is for karyawan.
@@ -42,7 +41,7 @@ module.exports = ({ store, upload, config, need }) => {
       checkInPhoto: req.file ? `/uploads/${req.file.filename}` : null,
       checkOut: null,
     });
-    notify(config, config.notifyChatId, `🟢 ${req.user.name} absen masuk`);
+    notifier.group(`🟢 ${req.user.name} absen masuk`);
     res.redirect('/absensi?ok=Absen masuk tercatat');
   });
 
@@ -55,7 +54,7 @@ module.exports = ({ store, upload, config, need }) => {
       checkOutLocation: location(req.body),
       checkOutPhoto: req.file ? `/uploads/${req.file.filename}` : null,
     });
-    notify(config, config.notifyChatId, `🔴 ${req.user.name} absen pulang`);
+    notifier.group(`🔴 ${req.user.name} absen pulang`);
     res.redirect('/absensi?ok=Absen pulang tercatat');
   });
 
@@ -104,7 +103,7 @@ module.exports = ({ store, upload, config, need }) => {
     } else {
       store.insert('dailyReports', { userId: req.user.id, date, summary, done, issues: req.body.issues || '', photos });
     }
-    notify(config, config.notifyChatId, `📝 Laporan harian ${req.user.name}:\n${summary}`);
+    notifier.group(`📝 Laporan harian ${req.user.name}:\n${summary}`);
     res.redirect('/absensi?ok=Laporan terkirim');
   });
 
@@ -128,7 +127,7 @@ module.exports = ({ store, upload, config, need }) => {
       reason: reason.trim(),
       status: 'pending',
     });
-    notify(config, config.notifyChatId, `⏱️ Pengajuan lembur ${req.user.name} ${date} ${start}–${end} (${(ot.minutes / 60).toFixed(1)} jam)\n${ot.reason}`);
+    notifier.group(`⏱️ Pengajuan lembur ${req.user.name} ${date} ${start}–${end} (${(ot.minutes / 60).toFixed(1)} jam)\n${ot.reason}`);
     res.redirect('/absensi/lembur?ok=Pengajuan lembur terkirim');
   });
 

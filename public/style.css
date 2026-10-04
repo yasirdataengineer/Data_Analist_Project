@@ -170,7 +170,7 @@ tr:last-child td { border-bottom: 0; }
 .prose b { color: var(--ink); opacity: .75; }
 .prose hr { border: 0; border-top: 1px solid var(--line); margin: 16px 0; }
 .inline-form { display: flex; gap: 8px; flex-wrap: wrap; margin: 8px 0; }
-.inline-form select { flex: 1; min-width: 120px; margin-top: 0; }
+.inline-form select, .inline-form input { flex: 1; min-width: 120px; margin-top: 0; }
 .linkish { background: none; border: 0; padding: 4px 0; color: var(--blue); font: inherit; font-weight: 600; cursor: pointer; }
 .linkish.danger { color: var(--bad); }
 .role-owner { background: #13294b; color: #fff; }
@@ -226,3 +226,9 @@ tr:last-child td { border-bottom: 0; }
 #bot-login .btn-block { text-align: center; margin-bottom: 12px; }
 .footer { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
 .logout { margin: 0; }
+
+/* WhatsApp */
+.btn-wa { background: #1a7f4b; }
+.chat-login .btn-block { text-align: center; margin-bottom: 12px; }
+.footer-links { display: inline-flex; gap: 6px; align-items: center; }
+.logout { display: inline; }

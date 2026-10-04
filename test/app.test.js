@@ -12,6 +12,22 @@ const { minutesBetween } = require('../lib/dates');
 const { overtimePay } = require('../lib/payroll');
 
 const BOT_TOKEN = '123456:TEST';
+const WA_SECRET = 'wa-app-secret';
+const WA_BUSINESS = '6281100000000';
+
+// Outbound Telegram / WhatsApp calls are captured instead of hitting the network.
+const outbox = [];
+const realFetch = global.fetch;
+global.fetch = async (url, opts = {}) => {
+  const u = String(url);
+  if (u.startsWith('https://api.telegram.org/') || u.startsWith('https://graph.facebook.com/')) {
+    const channel = u.includes('telegram') ? 'telegram' : 'whatsapp';
+    outbox.push({ channel, method: u.split('/').pop(), body: JSON.parse(opts.body || '{}') });
+    return new Response(JSON.stringify({ ok: true, result: true, messages: [{ id: 'wamid.x' }] }), { status: 200 });
+  }
+  return realFetch(url, opts);
+};
+const sentTo = (channel, to) => outbox.filter((m) => m.channel === channel && String(m.body.to ?? m.body.chat_id) === String(to));
 const OWNER = { id: 1, first_name: 'Pak', last_name: 'yasir' };
 
 function signInitData(user, authDate = Math.floor(Date.now() / 1000)) {
@@ -33,6 +49,18 @@ before(async () => {
     sessionSecret: 'test-secret',
     devLogin: false,
     botUsername: 'tjp_onehub_bot',
+    ownerPhones: [],
+    whatsapp: {
+      enabled: true,
+      token: 'wa-token',
+      phoneNumberId: '1234567890',
+      businessNumber: WA_BUSINESS,
+      verifyToken: 'verify-me',
+      appSecret: WA_SECRET,
+      apiVersion: 'v22.0',
+      notifyTemplate: 'onehub_notifikasi',
+      templateLang: 'id',
+    },
     uploadDir: path.join(tmp, 'uploads'),
   };
   const app = createApp(config, new Store(path.join(tmp, 'db.json')));
@@ -337,4 +365,146 @@ test('bot login: "Bukan saya" denies; new users land on the pending page', async
   const page = await get('/', session);
   assert.strictEqual(page.status, 403);
   assert.match(await page.text(), /Akses belum aktif/);
+});
+
+// --- WhatsApp -----------------------------------------------------------------
+
+const { normalizePhone, templateParam } = require('../lib/whatsapp');
+
+function waWebhook(messages, { secret = WA_SECRET, contacts = [] } = {}) {
+  const body = JSON.stringify({ object: 'whatsapp_business_account', entry: [{ changes: [{ field: 'messages', value: { contacts, messages } }] }] });
+  const sig = 'sha256=' + crypto.createHmac('sha256', secret).update(body).digest('hex');
+  return realFetch(`${base}/webhooks/whatsapp`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Hub-Signature-256': sig }, body });
+}
+const waText = (from, text, name = '') => waWebhook([{ from, id: 'm' + Math.random(), type: 'text', text: { body: text } }], { contacts: [{ wa_id: from, profile: { name } }] });
+const waButton = (from, id) => waWebhook([{ from, id: 'b' + Math.random(), type: 'interactive', interactive: { type: 'button_reply', button_reply: { id, title: 'x' } } }]);
+const sessionFrom = (res) => res.headers.get('set-cookie').split(/,(?=\s*\w+=)/).find((c) => c.trim().startsWith('tjp_sid=')).split(';')[0].trim();
+const tick = () => new Promise((r) => setTimeout(r, 20));
+
+async function startWa(cookie = '', purpose = 'login') {
+  const res = await realFetch(`${base}/auth/bot/start`, { method: 'POST', headers: { cookie, 'Content-Type': 'application/json' }, body: JSON.stringify({ channel: 'whatsapp', purpose }) });
+  const data = await res.json();
+  assert.strictEqual(res.status, 200, data.error);
+  const text = decodeURIComponent(data.link.split('?text=')[1]);
+  return { ...data, text, cookie: res.headers.get('set-cookie').split(';')[0] };
+}
+
+// Sends the prefilled message, then taps the button the bot replied with.
+async function confirmOnWhatsApp(from, text, name, tap = 'y') {
+  outbox.length = 0;
+  assert.strictEqual((await waText(from, text, name)).status, 200);
+  await tick();
+  const prompt = sentTo('whatsapp', from).find((m) => m.body.type === 'interactive');
+  assert.ok(prompt, 'bot should reply with confirmation buttons');
+  const btn = prompt.body.interactive.action.buttons.find((b) => b.reply.id.startsWith(`lg:${tap}:`));
+  outbox.length = 0;
+  await waButton(from, btn.reply.id);
+  await tick();
+  return prompt;
+}
+
+test('whatsapp helpers', () => {
+  assert.strictEqual(normalizePhone('0812-3456-7890'), '6281234567890');
+  assert.strictEqual(normalizePhone('+62 812 3456 7890'), '6281234567890');
+  assert.strictEqual(normalizePhone('123'), null);
+  assert.strictEqual(templateParam('<b>Halo</b>\nbaris 2'), 'Halo · baris 2');
+});
+
+test('whatsapp webhook: verification handshake and signature check', async () => {
+  const ok = await realFetch(`${base}/webhooks/whatsapp?hub.mode=subscribe&hub.verify_token=verify-me&hub.challenge=42`);
+  assert.strictEqual(await ok.text(), '42');
+  assert.strictEqual((await realFetch(`${base}/webhooks/whatsapp?hub.mode=subscribe&hub.verify_token=nope&hub.challenge=42`)).status, 403);
+  assert.strictEqual((await waWebhook([], { secret: 'wrong' })).status, 401);
+});
+
+test('whatsapp login: MASUK message, code shown, "Ya, ini saya" logs the browser in as a pending user', async () => {
+  const phone = '6281299990001';
+  const r = await startWa();
+  assert.ok(r.link.startsWith(`https://wa.me/${WA_BUSINESS}?text=`));
+  assert.match(r.text, /^MASUK [A-Z2-9]{8}$/);
+
+  const prompt = await confirmOnWhatsApp(phone, r.text, 'Andi Lapangan');
+  assert.match(prompt.body.interactive.body.text, new RegExp(`\\*${r.code}\\*`));
+  assert.match(sentTo('whatsapp', phone)[0].body.text.body, /menunggu persetujuan/);
+
+  const status = await get('/auth/bot/status', r.cookie);
+  assert.strictEqual((await status.json()).status, 'confirmed');
+  const page = await get('/', sessionFrom(status));
+  assert.strictEqual(page.status, 403);
+  assert.match(await page.text(), /Akses belum aktif/);
+
+  // Reusing the message, or tapping from a different number, does nothing.
+  outbox.length = 0;
+  await waText(phone, r.text);
+  await tick();
+  assert.match(sentTo('whatsapp', phone)[0].body.text.body, /kedaluwarsa/);
+});
+
+test('whatsapp: "Bukan saya" denies; a button from another number is ignored', async () => {
+  let r = await startWa();
+  await confirmOnWhatsApp('6281299990002', r.text, 'X', 'n');
+  assert.strictEqual((await (await get('/auth/bot/status', r.cookie)).json()).status, 'denied');
+
+  r = await startWa();
+  outbox.length = 0;
+  await waText('6281299990003', r.text, 'Asli');
+  await tick();
+  const btn = sentTo('whatsapp', '6281299990003')[0].body.interactive.action.buttons[0].reply.id;
+  await waButton('6281299990004', btn); // attacker's number
+  await tick();
+  assert.strictEqual((await (await get('/auth/bot/status', r.cookie)).json()).status, 'pending');
+});
+
+test('whatsapp: link a number from Profil, then log in with WhatsApp to the same account and get WA notifications', async () => {
+  const owner = await login(OWNER);
+  const staffTg = { id: 90, first_name: 'Dimas' };
+  const staff = await member(staffTg, 'karyawan');
+  const phone = '6281299990090';
+
+  const r = await startWa(staff, 'link');
+  assert.match(r.text, /^HUBUNGKAN /);
+  await confirmOnWhatsApp(phone, r.text, 'Dimas WA');
+  assert.match(sentTo('whatsapp', phone)[0].body.text.body, /terhubung ke akun Dimas/);
+  assert.strictEqual((await (await get('/auth/bot/status', r.cookie)).json()).status, 'linked');
+  assert.match(await html('/profil', staff), /\+6281299990090/);
+
+  // Another account can't claim the same number.
+  const other = await member({ id: 91, first_name: 'Lain' }, 'karyawan');
+  const r2 = await startWa(other, 'link');
+  await confirmOnWhatsApp(phone, r2.text, 'X');
+  assert.match(sentTo('whatsapp', phone)[0].body.text.body, /sudah terhubung ke akun lain/);
+
+  // WhatsApp login lands on the existing Telegram account.
+  const r3 = await startWa();
+  await confirmOnWhatsApp(phone, r3.text, 'Dimas WA');
+  const waSession = sessionFrom(await get('/auth/bot/status', r3.cookie));
+  assert.match(await html('/', waSession), /Dimas/);
+  assert.match(await html('/', waSession), /Sistem Absensi/);
+
+  // Notifications now go to both Telegram and WhatsApp (template)...
+  outbox.length = 0;
+  await post('/progres', owner, { title: 'Cek panel MDP', picId: '90' });
+  await tick();
+  const waMsg = sentTo('whatsapp', phone).find((m) => m.body.type === 'template');
+  assert.strictEqual(waMsg.body.template.name, 'onehub_notifikasi');
+  assert.match(waMsg.body.template.components[0].parameters[0].text, /Penugasan baru.*Cek panel MDP/);
+  assert.ok(!/[\n<]/.test(waMsg.body.template.components[0].parameters[0].text));
+  assert.strictEqual(sentTo('telegram', '90').length, 1);
+
+  // ...until the user turns WhatsApp off.
+  await post('/profil/notifikasi', staff, { telegram: '1' });
+  outbox.length = 0;
+  await post('/progres', owner, { title: 'Cek panel SDP', picId: '90' });
+  await tick();
+  assert.strictEqual(sentTo('whatsapp', phone).length, 0);
+  assert.strictEqual(sentTo('telegram', '90').length, 1);
+});
+
+test('admin can set an employee WhatsApp number; duplicates rejected', async () => {
+  const admin = await member({ id: 95, first_name: 'AdminWA' }, 'admin');
+  await member({ id: 96, first_name: 'Teknisi' }, 'karyawan');
+  assert.strictEqual((await post('/pengguna/96', admin, { phone: '0812-9999-0096' })).status, 302);
+  assert.match(await html('/pengguna', admin), /WA \+6281299990096/);
+  assert.strictEqual((await post('/pengguna/96', admin, { phone: '081299990090' })).status, 400); // Dimas's number
+  assert.strictEqual((await post('/pengguna/96', admin, { phone: 'abc' })).status, 400);
 });

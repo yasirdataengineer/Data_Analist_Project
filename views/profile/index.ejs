@@ -1,0 +1,44 @@
+<%- include('../partials/head', { title: 'Profil', back: '/' }) %>
+<%- include('../partials/pagehead', { back: '/', eyebrow: 'TJP / EJS', heading: user.name, sub: ROLES[user.role] + (user.company ? ' · ' + user.company : '') }) %>
+
+<h3 class="section">Akun terhubung</h3>
+<div class="card">
+  <div class="row">
+    <span><b>Telegram</b><br><span class="muted small"><%= telegramLinked ? (user.username ? '@' + user.username : 'ID ' + user.id) : 'Belum terhubung' %></span></span>
+    <span class="status <%= telegramLinked ? 'status-closed' : 'status-rejected' %>"><%= telegramLinked ? 'Terhubung' : '—' %></span>
+  </div>
+</div>
+<div class="card">
+  <div class="row">
+    <span><b>WhatsApp</b><br><span class="muted small"><%= user.phone ? '+' + user.phone : 'Belum terhubung' %></span></span>
+    <span class="status <%= user.phone ? 'status-closed' : 'status-rejected' %>"><%= user.phone ? 'Terhubung' : '—' %></span>
+  </div>
+  <% if (user.phone && !user.id.startsWith('wa:')) { %>
+    <form method="post" action="/profil/whatsapp/lepas"><button class="linkish danger" onclick="return confirm('Lepas nomor WhatsApp dari akun ini?')">Lepas nomor</button></form>
+  <% } %>
+</div>
+
+<% if (!user.phone && waAvailable) { %>
+  <%- include('../partials/chat-login', {
+    channel: 'whatsapp', purpose: 'link',
+    title: 'Hubungkan WhatsApp',
+    intro: 'Terima notifikasi One Hub di WhatsApp dan bisa masuk dengan WhatsApp. Nomor diverifikasi dengan mengirim pesan dari nomor tersebut.',
+    startLabel: 'Hubungkan WhatsApp', openLabel: 'Buka WhatsApp & kirim pesan',
+    steps: 'Kirim pesan <b>HUBUNGKAN …</b> yang sudah terisi dari nomor yang ingin dihubungkan, pastikan kodenya sama, lalu tekan <b>"Ya, ini saya"</b>.'
+  }) %>
+<% } %>
+
+<h3 class="section">Saluran notifikasi</h3>
+<% if (!telegramLinked && !user.phone) { %>
+  <div class="card empty">Hubungkan Telegram atau WhatsApp untuk menerima notifikasi.</div>
+<% } else { %>
+<form class="card form" method="post" action="/profil/notifikasi">
+  <label class="check"><input type="checkbox" name="telegram" value="1" <%= channels.telegram ? 'checked' : '' %> <%= telegramLinked ? '' : 'disabled' %>> Telegram</label>
+  <label class="check"><input type="checkbox" name="whatsapp" value="1" <%= channels.whatsapp ? 'checked' : '' %> <%= user.phone ? '' : 'disabled' %>> WhatsApp</label>
+  <button class="btn">Simpan</button>
+</form>
+<% } %>
+
+<form method="post" action="/logout"><button class="btn btn-ghost">Keluar</button></form>
+<script src="/public/chat-login.js" defer></script>
+<%- include('../partials/foot') %>

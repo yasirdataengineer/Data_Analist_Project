@@ -14,7 +14,7 @@
 <% const card = (u) => { %>
   <div class="card">
     <div class="row"><h2 class="item-title"><%= u.name %></h2><span class="status role-<%= u.role %>"><%= ROLES[u.role] || 'Baru' %></span></div>
-    <p class="muted"><%= u.company || '—' %><%= u.username ? ' · @' + u.username : '' %></p>
+    <p class="muted"><%= u.company || '—' %><%= u.username ? ' · @' + u.username : '' %><%= u.phone ? ' · WA +' + u.phone : '' %></p>
     <% if (canEdit(u)) { %>
       <form class="inline-form" method="post" action="/pengguna/<%= u.id %>">
         <select name="role" aria-label="Peran">
@@ -23,6 +23,7 @@
         <select name="company" aria-label="Perusahaan">
           <% COMPANIES.forEach(c => { %><option <%= u.company === c ? 'selected' : '' %>><%= c %></option><% }) %>
         </select>
+        <input name="phone" inputmode="tel" value="<%= u.phone || '' %>" placeholder="No. WhatsApp (08…)" aria-label="Nomor WhatsApp">
         <button class="btn btn-ghost">Simpan</button>
       </form>
       <form method="post" action="/pengguna/<%= u.id %>">
