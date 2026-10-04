@@ -1,0 +1,58 @@
+<%- include('../partials/head', { title: 'Pengajuan baru', back: '/proc' }) %>
+<%- include('../partials/pagehead', { back: '/proc', eyebrow: 'Sistem Proc & Res', heading: 'Pengajuan baru' }) %>
+<form class="card form" method="post" action="/proc">
+  <label>Jenis
+    <select name="type">
+      <% Object.entries(TYPES).forEach(([k, v]) => { %><option value="<%= k %>" <%= k === type ? 'selected' : '' %>><%= v %></option><% }) %>
+    </select>
+  </label>
+  <label>Judul *<input name="title" required placeholder="mis. Kabel NYY 4x16 untuk panel UPS"></label>
+  <label>Proyek
+    <select name="projectId">
+      <option value="">— Umum / kantor —</option>
+      <% projects.forEach(p => { %><option value="<%= p.id %>"><%= p.code ? p.code + ' · ' : '' %><%= p.name %></option><% }) %>
+    </select>
+  </label>
+  <label>Dibutuhkan tanggal<input type="date" name="neededBy"></label>
+
+  <fieldset>
+    <legend>Item</legend>
+    <div id="items">
+      <div class="item-row">
+        <input name="itemName" placeholder="Nama barang / biaya" required>
+        <div class="row three-col">
+          <input name="itemQty" type="number" min="0" step="any" value="1" aria-label="Qty">
+          <input name="itemUnit" placeholder="Satuan" aria-label="Satuan">
+          <input name="itemPrice" inputmode="numeric" placeholder="Harga satuan" aria-label="Harga satuan">
+        </div>
+      </div>
+    </div>
+    <button type="button" class="btn btn-ghost" id="add-item">+ Tambah item</button>
+    <p class="row"><span class="muted">Estimasi total</span><b id="total">Rp 0</b></p>
+  </fieldset>
+
+  <label>Catatan<textarea name="notes" rows="3" placeholder="Vendor, spesifikasi, alasan kebutuhan…"></textarea></label>
+  <button class="btn">Kirim pengajuan</button>
+</form>
+<script>
+  (() => {
+    const box = document.getElementById('items');
+    const tpl = box.firstElementChild;
+    const recalc = () => {
+      let t = 0;
+      box.querySelectorAll('.item-row').forEach((row) => {
+        const qty = Number(row.querySelector('[name=itemQty]').value) || 0;
+        const price = Number(row.querySelector('[name=itemPrice]').value.replace(/\D/g, '')) || 0;
+        t += qty * price;
+      });
+      document.getElementById('total').textContent = 'Rp ' + t.toLocaleString('id-ID');
+    };
+    document.getElementById('add-item').addEventListener('click', () => {
+      const row = tpl.cloneNode(true);
+      row.querySelectorAll('input').forEach((i) => { i.value = i.name === 'itemQty' ? '1' : ''; i.required = false; });
+      box.appendChild(row);
+    });
+    box.addEventListener('input', recalc);
+  })();
+</script>
+<%- include('../partials/foot') %>

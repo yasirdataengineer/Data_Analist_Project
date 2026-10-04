@@ -1,0 +1,48 @@
+<%- include('../partials/head', { title: 'Koreksi lembur', back: '/payroll' }) %>
+<%- include('../partials/pagehead', { back: '/payroll', eyebrow: 'Sistem Payroll', heading: 'Koreksi lembur', sub: 'Perbaiki jam lembur yang salah, atau ajukan lembur yang belum tercatat.' }) %>
+<% const label = { pending: 'Menunggu', approved: 'Disetujui', rejected: 'Ditolak' }; %>
+
+<% if (isAdmin && pending.length) { %>
+<h3 class="section">Perlu persetujuan</h3>
+<% pending.forEach(c => { %>
+  <div class="card">
+    <div class="row"><b><%= c.userName %></b><span class="muted"><%= d.formatDate(c.date) %></span></div>
+    <p>
+      <% if (c.original) { %><s class="muted"><%= c.original.start %>–<%= c.original.end %></s> → <% } else { %><span class="tag">baru</span> <% } %>
+      <b><%= c.start %>–<%= c.end %></b> (<%= (c.minutes / 60).toFixed(1) %> jam)
+    </p>
+    <p><%= c.reason %></p>
+    <div class="actions">
+      <form method="post" action="/payroll/koreksi/<%= c.id %>/approve"><button class="btn">Setujui</button></form>
+      <form method="post" action="/payroll/koreksi/<%= c.id %>/reject"><button class="btn btn-ghost">Tolak</button></form>
+    </div>
+  </div>
+<% }) %>
+<% } %>
+
+<h3 class="section">Ajukan koreksi</h3>
+<form class="card form" method="post" action="/payroll/koreksi">
+  <label>Lembur yang dikoreksi
+    <select name="overtimeId" onchange="document.getElementById('newdate').hidden = !!this.value">
+      <option value="">— Lembur belum tercatat —</option>
+      <% myOvertime.forEach(o => { %><option value="<%= o.id %>"><%= d.formatDate(o.date) %> · <%= o.start %>–<%= o.end %></option><% }) %>
+    </select>
+  </label>
+  <label id="newdate">Tanggal lembur<input type="date" name="date" value="<%= today %>"></label>
+  <div class="row two">
+    <label>Mulai (benar)<input type="time" name="start" required></label>
+    <label>Selesai (benar)<input type="time" name="end" required></label>
+  </div>
+  <label>Alasan *<textarea name="reason" rows="3" required></textarea></label>
+  <button class="btn">Kirim koreksi</button>
+</form>
+
+<h3 class="section">Koreksi saya</h3>
+<% if (!mine.length) { %><div class="card empty">Belum ada koreksi.</div><% } %>
+<% mine.forEach(c => { %>
+  <div class="card compact">
+    <div class="row"><b><%= d.formatDate(c.date) %> · <%= c.start %>–<%= c.end %></b><span class="status status-<%= c.status %>"><%= label[c.status] %></span></div>
+    <p class="muted"><%= c.reason %></p>
+  </div>
+<% }) %>
+<%- include('../partials/foot') %>

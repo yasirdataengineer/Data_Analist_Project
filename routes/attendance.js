@@ -135,6 +135,9 @@ module.exports = ({ store, upload, config, isAdmin }) => {
     const ot = store.find('overtime', (o) => o.id === req.params.id);
     if (!ot) return next();
     if (ot.status !== 'pending') throw badRequest('Pengajuan ini sudah diproses.');
+    if (store.find('payrolls', (p) => p.userId === ot.userId && p.month === ot.date.slice(0, 7))) {
+      throw badRequest('Payroll bulan tersebut sudah difinalisasi; ajukan lewat koreksi lembur bulan berjalan.');
+    }
     const status = req.params.action === 'approve' ? 'approved' : 'rejected';
     store.update('overtime', ot.id, { status, decidedBy: req.user.id, decidedAt: new Date().toISOString() });
     // The requester's Telegram user id doubles as their private chat id with the bot.

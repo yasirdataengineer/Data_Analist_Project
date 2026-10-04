@@ -141,3 +141,24 @@ tr:last-child td { border-bottom: 0; }
   .display { font-size: 1.7rem; }
   .grid { grid-template-columns: 1fr; }
 }
+
+/* Payroll & Proc */
+.slip { width: 100%; margin: 12px 0; border-collapse: collapse; }
+.slip td { padding: 6px 0; border-bottom: 1px dashed var(--line); }
+.slip td:last-child { text-align: right; white-space: nowrap; }
+.slip tr.sum td, tr.sum td { font-weight: 700; border-bottom: 1px solid var(--line); }
+.stats.two-col { grid-template-columns: 1fr 1fr; }
+.grid.three { grid-template-columns: repeat(3, 1fr); margin-bottom: 16px; }
+.grid.three .card { padding: 14px 10px; text-align: center; }
+.grid.three h2 { font-size: .95rem; margin: 0; }
+.grid + .search { margin-top: 0; }
+.search select { flex: 1; margin-top: 0; }
+.search input[type="month"] { margin-top: 0; }
+.item-title { font-size: 1.05rem; margin: 8px 0 4px; }
+.item-row { padding-bottom: 10px; margin-bottom: 10px; border-bottom: 1px dashed var(--line); }
+.row.three-col { display: grid; grid-template-columns: 1fr 1fr 1.6fr; gap: 8px; }
+.note { white-space: pre-line; margin-top: 10px; }
+.neg { color: var(--bad); }
+.status-done { background: #e8eefc; color: var(--blue); }
+.card .row + .row { margin-top: 6px; }
+.grid.three .plus { display: block; color: var(--blue); font-size: 1.4rem; font-weight: 700; line-height: 1; margin-bottom: 4px; }

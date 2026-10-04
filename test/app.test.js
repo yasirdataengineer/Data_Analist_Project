@@ -132,3 +132,83 @@ test('overtime: only admins can approve, and only once', async () => {
   assert.strictEqual((await post(`/absensi/lembur/${id}/reject`, admin, {})).status, 400);
   assert.match(await (await get('/absensi/lembur', staff)).text(), /Disetujui/);
 });
+
+test('overtimePay follows Kemnaker workday multipliers', () => {
+  const { overtimePay } = require('../lib/payroll');
+  assert.strictEqual(overtimePay(60, 10000), 15000);
+  assert.strictEqual(overtimePay(180, 10000), 55000); // 1.5 + 2 + 2 hours
+  assert.strictEqual(overtimePay(30, 10000), 7500);
+});
+
+test('payroll: salary + approved overtime + kasbon roll into the slip, finalisation locks the month', async () => {
+  const admin = await login({ id: 900, first_name: 'Admin' });
+  const staff = await login({ id: 400, first_name: 'Rudi' });
+  const month = '2026-09';
+
+  assert.strictEqual((await post('/payroll/gaji/400', staff, { base: '3460000' })).status, 400);
+  assert.strictEqual((await post('/payroll/gaji/400', admin, { base: '3.460.000', allowance: '500000' })).status, 302);
+
+  // 2h approved overtime: hourly 20.000 -> 1.5*20k + 2*20k = 70.000
+  await post('/absensi/lembur', staff, { date: `${month}-10`, start: '17:00', end: '19:00', reason: 'Testing panel' });
+  let html = await (await get('/absensi/lembur', admin)).text();
+  let id = html.match(/\/absensi\/lembur\/([0-9a-f-]{36})\/approve/)[1];
+  await post(`/absensi/lembur/${id}/approve`, admin, {});
+
+  // Correct it to 3h: 1.5 + 2 + 2 = 5.5 * 20k = 110.000
+  html = await (await get('/payroll/koreksi', staff)).text();
+  const otId = html.match(/<option value="([0-9a-f-]{36})">/)[1];
+  await post('/payroll/koreksi', staff, { overtimeId: otId, start: '17:00', end: '20:00', reason: 'Jam pulang salah' });
+  html = await (await get('/payroll/koreksi', admin)).text();
+  id = html.match(/\/payroll\/koreksi\/([0-9a-f-]{36})\/approve/)[1];
+  assert.strictEqual((await post(`/payroll/koreksi/${id}/approve`, admin, {})).status, 302);
+
+  await post('/payroll/kasbon', staff, { amount: '250.000', deductMonth: month, reason: 'Keperluan keluarga' });
+  html = await (await get('/payroll/kasbon', admin)).text();
+  id = html.match(/\/payroll\/kasbon\/([0-9a-f-]{36})\/approve/)[1];
+  await post(`/payroll/kasbon/${id}/approve`, admin, {});
+
+  // 3.460.000 + 500.000 + 110.000 - 250.000 = 3.820.000
+  html = await (await get(`/payroll?bulan=${month}`, staff)).text();
+  assert.match(html, /Rp 3\.820\.000/);
+  assert.match(html, /koreksi/);
+
+  assert.strictEqual((await get('/payroll/rekap', staff)).status, 400);
+  assert.strictEqual((await post('/payroll/rekap/finalisasi', admin, { bulan: month, userId: '400' })).status, 302);
+  assert.match(await (await get(`/payroll?bulan=${month}`, staff)).text(), /Final/);
+  assert.strictEqual((await post('/payroll/kasbon', staff, { amount: '100000', deductMonth: month, reason: 'x' })).status, 400);
+});
+
+test('proc & res: request -> approve -> PIC report with receipt', async () => {
+  const staff = await login({ id: 500, first_name: 'Dewi' });
+  const admin = await login({ id: 900, first_name: 'Admin' });
+  const other = await login({ id: 501, first_name: 'Eko' });
+
+  const body = new URLSearchParams([
+    ['type', 'pembelian'], ['title', 'Kabel NYY'],
+    ['itemName', 'Kabel NYY 4x16'], ['itemQty', '50'], ['itemUnit', 'm'], ['itemPrice', '120.000'],
+    ['itemName', 'Skun'], ['itemQty', '8'], ['itemUnit', 'pcs'], ['itemPrice', '15000'],
+    ['itemName', ''], ['itemQty', '1'], ['itemUnit', ''], ['itemPrice', ''],
+  ]);
+  const created = await fetch(`${base}/proc`, { method: 'POST', redirect: 'manual', headers: { cookie: staff, 'Content-Type': 'application/x-www-form-urlencoded' }, body });
+  assert.strictEqual(created.status, 302);
+  const url = created.headers.get('location').split('?')[0];
+
+  let html = await (await get(url, staff)).text();
+  assert.match(html, /PR-\d{4}-0001/);
+  assert.match(html, /Rp 6\.120\.000/); // 50*120k + 8*15k
+  assert.strictEqual((await get(url, other)).status, 404);
+
+  assert.strictEqual((await post(`${url}/approve`, staff, {})).status, 400);
+  assert.strictEqual((await post(`${url}/approve`, admin, { approvedAmount: '6000000' })).status, 302);
+
+  const fd = new FormData();
+  fd.set('actualAmount', '5.800.000');
+  assert.strictEqual((await fetch(`${base}${url}/laporan`, { method: 'POST', redirect: 'manual', headers: { cookie: staff }, body: fd })).status, 400);
+  fd.append('receipts', new Blob([Buffer.from('89504e47', 'hex')], { type: 'image/png' }), 'nota.png');
+  assert.strictEqual((await fetch(`${base}${url}/laporan`, { method: 'POST', redirect: 'manual', headers: { cookie: staff }, body: fd })).status, 302);
+
+  html = await (await get(url, staff)).text();
+  assert.match(html, /Selesai/);
+  assert.match(html, /Sisa dana/);
+  assert.match(html, /Rp 200\.000/);
+});

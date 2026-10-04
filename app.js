@@ -77,6 +77,8 @@ function createApp(config, store) {
 
   app.use('/progres', require('./routes/progress')({ store, upload, config, isAdmin }));
   app.use('/absensi', require('./routes/attendance')({ store, upload, config, isAdmin }));
+  app.use('/payroll', require('./routes/payroll')({ store, config, isAdmin }));
+  app.use('/proc', require('./routes/procurement')({ store, upload, config, isAdmin }));
 
   app.use((req, res) => res.status(404).render('error', { message: 'Halaman tidak ditemukan.' }));
   // eslint-disable-next-line no-unused-vars

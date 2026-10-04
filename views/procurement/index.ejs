@@ -1,0 +1,36 @@
+<%- include('../partials/head', { title: 'Sistem Proc & Res', back: '/' }) %>
+<%- include('../partials/pagehead', { back: '/', eyebrow: 'Sistem Proc & Res', heading: 'Pengajuan & laporan', sub: '' }) %>
+
+<div class="stats two-col">
+  <div class="stat"><span class="num"><%= counts.pending %></span><span><%= isAdmin ? 'Perlu persetujuan' : 'Menunggu' %></span></div>
+  <div class="stat"><span class="num"><%= counts.toReport %></span><span>Perlu laporan PIC</span></div>
+</div>
+
+<div class="grid three">
+  <a class="card card-link tile" href="/proc/baru?jenis=operasional"><span class="plus">+</span><h2>Operasional</h2></a>
+  <a class="card card-link tile" href="/proc/baru?jenis=pembelian"><span class="plus">+</span><h2>Pembelian</h2></a>
+  <a class="card card-link tile" href="/proc/baru?jenis=lainnya"><span class="plus">+</span><h2>Lainnya</h2></a>
+</div>
+
+<form class="search" method="get">
+  <% if (isAdmin) { %>
+  <select name="scope" onchange="this.form.submit()">
+    <option value="semua" <%= viewScope === 'semua' ? 'selected' : '' %>>Semua pengajuan</option>
+    <option value="saya" <%= viewScope === 'saya' ? 'selected' : '' %>>Pengajuan saya</option>
+  </select>
+  <% } %>
+  <select name="status" onchange="this.form.submit()">
+    <option value="">Semua status</option>
+    <% Object.entries(STATUS).forEach(([k, v]) => { %><option value="<%= k %>" <%= status === k ? 'selected' : '' %>><%= v %></option><% }) %>
+  </select>
+</form>
+
+<% if (!rows.length) { %><div class="card empty">Belum ada pengajuan.</div><% } %>
+<% rows.forEach(r => { %>
+  <a class="card card-link compact" href="/proc/<%= r.id %>">
+    <div class="row"><span class="tag"><%= r.number %></span><span class="status status-<%= r.status %>"><%= STATUS[r.status] %></span></div>
+    <h2 class="item-title"><%= r.title %></h2>
+    <p class="row"><span class="muted"><%= TYPES[r.type] %> · <%= r.userName %><%= r.projectName ? ' · ' + r.projectName : '' %></span><b><%= d.rupiah(r.total) %></b></p>
+  </a>
+<% }) %>
+<%- include('../partials/foot') %>

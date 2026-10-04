@@ -1,0 +1,60 @@
+<%- include('../partials/head', { title: r.number, back: '/proc' }) %>
+<%- include('../partials/pagehead', { back: '/proc', eyebrow: r.number + ' · ' + TYPES[r.type], heading: r.title, sub: 'Diajukan ' + r.userName + ' · ' + d.formatDateTime(r.createdAt) }) %>
+
+<div class="card">
+  <div class="row"><span class="muted">Status</span><span class="status status-<%= r.status %>"><%= STATUS[r.status] %></span></div>
+  <% if (r.projectName) { %><div class="row"><span class="muted">Proyek</span><span><%= r.projectName %></span></div><% } %>
+  <% if (r.neededBy) { %><div class="row"><span class="muted">Dibutuhkan</span><span><%= d.formatDate(r.neededBy) %></span></div><% } %>
+  <% if (r.notes) { %><p class="note"><%= r.notes %></p><% } %>
+</div>
+
+<div class="card table-card">
+  <table>
+    <thead><tr><th>Item</th><th>Qty</th><th>Jumlah</th></tr></thead>
+    <tbody>
+      <% r.items.forEach(it => { %>
+        <tr><td><%= it.name %><br><span class="muted small">@ <%= d.rupiah(it.price) %></span></td><td><%= it.qty %> <%= it.unit %></td><td><%= d.rupiah(it.qty * it.price) %></td></tr>
+      <% }) %>
+      <tr class="sum"><td colspan="2">Total pengajuan</td><td><%= d.rupiah(r.total) %></td></tr>
+      <% if (r.approvedAmount) { %><tr><td colspan="2">Disetujui</td><td><b><%= d.rupiah(r.approvedAmount) %></b></td></tr><% } %>
+    </tbody>
+  </table>
+</div>
+
+<% if (decidedByName) { %>
+  <p class="muted small"><%= r.status === 'rejected' ? 'Ditolak' : 'Disetujui' %> oleh <%= decidedByName %> · <%= d.formatDateTime(r.decidedAt) %><%= r.decisionNote ? ' — ' + r.decisionNote : '' %></p>
+<% } %>
+
+<% if (isAdmin && r.status === 'pending') { %>
+<h3 class="section">Persetujuan</h3>
+<form class="card form" method="post">
+  <label>Nominal disetujui<input name="approvedAmount" inputmode="numeric" value="<%= r.total %>"></label>
+  <label>Catatan<textarea name="note" rows="2"></textarea></label>
+  <div class="actions">
+    <button class="btn" formaction="/proc/<%= r.id %>/approve">Setujui</button>
+    <button class="btn btn-ghost" formaction="/proc/<%= r.id %>/reject">Tolak</button>
+  </div>
+</form>
+<% } %>
+
+<% if (r.status === 'approved' && (r.userId === user.id || isAdmin)) { %>
+<h3 class="section">Laporan PIC (realisasi)</h3>
+<form class="card form" method="post" action="/proc/<%= r.id %>/laporan" enctype="multipart/form-data">
+  <label>Nominal realisasi (Rp)<input name="actualAmount" inputmode="numeric" required></label>
+  <label>Foto nota / bukti *<input type="file" name="receipts" accept="image/*" multiple required capture="environment"></label>
+  <label>Catatan<textarea name="note" rows="3" placeholder="Barang diterima, sisa uang dikembalikan, dll."></textarea></label>
+  <button class="btn">Kirim laporan</button>
+</form>
+<% } %>
+
+<% if (r.report) { %>
+<h3 class="section">Laporan PIC</h3>
+<div class="card">
+  <div class="row"><span class="muted">Realisasi</span><b><%= d.rupiah(r.report.actualAmount) %></b></div>
+  <div class="row"><span class="muted"><%= r.report.balance >= 0 ? 'Sisa dana' : 'Kekurangan' %></span><b class="<%= r.report.balance >= 0 ? '' : 'neg' %>"><%= d.rupiah(Math.abs(r.report.balance)) %></b></div>
+  <% if (r.report.note) { %><p class="note"><%= r.report.note %></p><% } %>
+  <div class="gallery"><% r.report.receipts.forEach(src => { %><a href="<%= src %>" target="_blank"><img src="<%= src %>" alt="Nota" loading="lazy"></a><% }) %></div>
+  <p class="muted small">Dilaporkan <%= d.formatDateTime(r.report.reportedAt) %></p>
+</div>
+<% } %>
+<%- include('../partials/foot') %>

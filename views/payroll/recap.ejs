@@ -1,0 +1,31 @@
+<%- include('../partials/head', { title: 'Rekap bulanan', back: '/payroll' }) %>
+<%- include('../partials/pagehead', { back: '/payroll', eyebrow: 'Sistem Payroll', heading: 'Rekap ' + d.formatMonth(month), sub: 'Total diterima semua karyawan: ' + d.rupiah(total) }) %>
+
+<form class="search" method="get">
+  <input type="month" name="bulan" value="<%= month %>" onchange="this.form.submit()">
+</form>
+
+<form method="post" action="/payroll/rekap/finalisasi">
+  <input type="hidden" name="bulan" value="<%= month %>">
+  <div class="card table-card">
+    <table>
+      <thead><tr><th></th><th>Karyawan</th><th>Hadir</th><th>Lembur</th><th>Kasbon</th><th>Diterima</th></tr></thead>
+      <tbody>
+        <% rows.forEach(r => { %>
+          <tr>
+            <td><% if (!r.paid && r.slip.configured) { %><input type="checkbox" name="userId" value="<%= r.user.id %>" checked><% } else if (r.paid) { %>✓<% } %></td>
+            <td><%= r.user.name %><% if (!r.slip.configured) { %><br><a class="small" href="/payroll/gaji">atur gaji</a><% } %></td>
+            <td><%= r.slip.presentDays %></td>
+            <td><%= (r.slip.overtimeMinutes / 60).toFixed(1) %> j</td>
+            <td><%= d.rupiah(r.slip.cashAdvanceTotal) %></td>
+            <td><b><%= d.rupiah(r.slip.net) %></b></td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+  <% if (rows.some(r => !r.paid && r.slip.configured)) { %>
+    <button class="btn btn-block" onclick="return confirm('Finalisasi slip yang dicentang? Data bulan ini akan dikunci.')">Finalisasi &amp; terbitkan slip</button>
+  <% } %>
+</form>
+<%- include('../partials/foot') %>
