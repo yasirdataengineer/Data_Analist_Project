@@ -1,0 +1,38 @@
+<%- include('../partials/head', { title: 'Kasbon', back: can('payroll.self') ? '/payroll' : '/payroll/rekap' }) %>
+<%- include('../partials/pagehead', { back: can('payroll.self') ? '/payroll' : '/payroll/rekap', eyebrow: 'Sistem Payroll', heading: 'Kasbon' }) %>
+<% const label = { pending: 'Menunggu', approved: 'Disetujui', rejected: 'Ditolak' }; %>
+
+<% if (can('payroll.manage') && pending.length) { %>
+<h3 class="section">Perlu persetujuan</h3>
+<% pending.forEach(c => { %>
+  <div class="card">
+    <div class="row"><b><%= c.userName %></b><b><%= d.rupiah(c.amount) %></b></div>
+    <p class="muted">Potong gaji <%= d.formatMonth(c.deductMonth) %></p>
+    <p><%= c.reason %></p>
+    <div class="actions">
+      <form method="post" action="/payroll/kasbon/<%= c.id %>/approve"><button class="btn">Setujui</button></form>
+      <form method="post" action="/payroll/kasbon/<%= c.id %>/reject"><button class="btn btn-ghost">Tolak</button></form>
+    </div>
+  </div>
+<% }) %>
+<% } %>
+
+<% if (can('payroll.self')) { %>
+<h3 class="section">Ajukan kasbon</h3>
+<form class="card form" method="post" action="/payroll/kasbon">
+  <label>Nominal (Rp)<input name="amount" inputmode="numeric" required placeholder="500000"></label>
+  <label>Dipotong dari gaji bulan<input type="month" name="deductMonth" value="<%= month %>" required></label>
+  <label>Keperluan *<textarea name="reason" rows="3" required></textarea></label>
+  <button class="btn">Kirim pengajuan</button>
+</form>
+
+<h3 class="section">Kasbon saya</h3>
+<% if (!mine.length) { %><div class="card empty">Belum ada kasbon.</div><% } %>
+<% mine.forEach(c => { %>
+  <div class="card compact">
+    <div class="row"><b><%= d.rupiah(c.amount) %></b><span class="status status-<%= c.status %>"><%= label[c.status] %></span></div>
+    <p class="muted"><%= c.reason %> · potong <%= d.formatMonth(c.deductMonth) %></p>
+  </div>
+<% }) %>
+<% } %>
+<%- include('../partials/foot') %>

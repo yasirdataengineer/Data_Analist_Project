@@ -1,0 +1,125 @@
+<%- include('../partials/head', { title: 'Petty Cash & Cash Flow Project', back: '/' }) %>
+<%- include('../partials/pagehead', { back: '/', eyebrow: 'TJP / EJS', heading: 'Petty Cash & Cash Flow Project' }) %>
+<% const q = (extra) => '/kas?tab=' + tab + '&periode=' + (period || 'semua') + (extra || ''); %>
+
+<a class="btn btn-outline" href="<%= q(typeof project !== 'undefined' && project ? '&project=' + project.id : '') %>">Perbarui data</a>
+
+<nav class="tabs">
+  <a class="<%= tab === 'petty' ? 'on' : '' %>" href="/kas?tab=petty&periode=<%= period || 'semua' %>">Lap Pettycash</a>
+  <a class="<%= tab === 'approval' ? 'on' : '' %>" href="/kas?tab=approval&periode=<%= period || 'semua' %>">Approval &amp; Transfer (<%= pendingTransfers %>)</a>
+  <a class="<%= tab === 'cashflow' ? 'on' : '' %>" href="/kas?tab=cashflow&periode=<%= period || 'semua' %>">Cash Flow Project</a>
+</nav>
+
+<% if (tab !== 'approval') { %>
+<p class="field-label">Periode</p>
+<form class="period" method="get" action="/kas">
+  <input type="hidden" name="tab" value="<%= tab %>">
+  <% if (tab === 'cashflow' && project) { %><input type="hidden" name="project" value="<%= project.id %>"><% } %>
+  <input type="month" name="periode" value="<%= period || '' %>" onchange="this.form.submit()" aria-label="Periode">
+  <a class="btn btn-outline" href="/kas?tab=<%= tab %>&periode=semua<%= tab === 'cashflow' && project ? '&project=' + project.id : '' %>">Semua periode</a>
+  <% if (can('kas.manage')) { %>
+    <% if (tab === 'petty') { %>
+      <a class="btn <%= summary.hasOpening ? 'disabled' : '' %>" href="/kas/saldo-awal">Input saldo awal</a>
+      <a class="btn" href="/kas/tambah-saldo">Tambah saldo</a>
+      <a class="btn btn-ghost <%= refundable.length ? '' : 'disabled' %>" href="/kas/pengembalian">Catat pengembalian sisa</a>
+    <% } else { %>
+      <a class="btn" href="/kas/project">Input project</a>
+      <a class="btn" href="/kas/penerimaan<%= project ? '?project=' + project.id : '' %>">Input penerimaan project</a>
+    <% } %>
+  <% } %>
+</form>
+<% } %>
+
+<% if (tab === 'petty') { %>
+  <div class="card stat-row"><span>Saldo Petty Cash saat ini<br><span class="muted small">(semua periode)</span></span><b><%= d.rupiah(summary.balance) %></b></div>
+  <div class="card stat-row"><span>Masuk pada periode</span><b><%= d.rupiah(summary.in) %></b></div>
+  <div class="card stat-row"><span>Keluar pada periode</span><b><%= d.rupiah(summary.out) %></b></div>
+
+  <h3 class="section">Laporan penggunaan dana <span class="muted small"><%= period ? d.formatMonth(period) : 'semua periode' %></span></h3>
+  <% if (!rows.length) { %><div class="card empty">Belum ada transaksi.</div><% } else { %>
+  <div class="card table-card">
+    <table class="ledger">
+      <tbody>
+      <% const label = { opening: 'Saldo awal', topup: 'Tambah saldo', refund: 'Pengembalian sisa', transfer: 'Transfer pengajuan' }; %>
+      <% rows.forEach(e => { %>
+        <tr>
+          <td><b><%= label[e.type] %></b><% if (e.requestNumber) { %> · <a href="/proc/<%= e.requestId %>"><%= e.requestNumber %></a><% } %><br><span class="muted small"><%= d.formatDate(e.date) %><%= e.note ? ' · ' + e.note : '' %></span></td>
+          <td class="<%= e.amount > 0 ? 'pos' : 'neg' %>"><%= e.amount > 0 ? '+' : '−' %> <%= d.rupiah(Math.abs(e.amount)) %></td>
+        </tr>
+      <% }) %>
+      </tbody>
+    </table>
+  </div>
+  <% } %>
+<% } %>
+
+<% if (tab === 'approval') { %>
+  <p class="muted">Setujui atau tolak pengajuan. Setelah transfer dilakukan, lampirkan bukti dan tanggalnya. Pilih sumber pembayaran. Hanya transfer dari Petty Cash yang mengurangi saldo kas; Rekening Induk TJP tetap tercatat dalam arus kas proyek.</p>
+  <% if (!rows.length) { %><div class="card empty">Tidak ada pengajuan.</div><% } %>
+  <% rows.forEach(r => { %>
+    <%- include('../partials/request-card', { r }) %>
+    <% if (r.status === 'pending' && can('proc.approve')) { %>
+      <form class="actions under-card" method="post">
+        <input type="hidden" name="back" value="approval">
+        <button class="btn" formaction="/proc/<%= r.id %>/approve">Setujui <%= d.rupiah(r.amount) %></button>
+        <button class="btn btn-ghost" formaction="/proc/<%= r.id %>/reject">Tolak</button>
+      </form>
+    <% } else if (r.status === 'approved' && can('kas.manage')) { %>
+      <div class="under-card"><a class="btn" href="/proc/<%= r.id %>">Transfer &amp; lampirkan bukti</a></div>
+    <% } %>
+  <% }) %>
+<% } %>
+
+<% if (tab === 'cashflow') { %>
+  <p class="field-label">Project</p>
+  <form method="get" action="/kas">
+    <input type="hidden" name="tab" value="cashflow">
+    <input type="hidden" name="periode" value="<%= period || 'semua' %>">
+    <select name="project" onchange="this.form.submit()">
+      <option value="">Pilih project untuk rincian arus kas</option>
+      <% projects.forEach(p => { %><option value="<%= p.id %>" <%= project && project.id === p.id ? 'selected' : '' %>><%= p.code %> — <%= p.name %></option><% }) %>
+    </select>
+  </form>
+  <p class="muted">Arus kas proyek = penerimaan proyek − transfer pengeluaran proyek + pengembalian sisa. Penerimaan proyek tidak otomatis menambah Petty Cash; catat pengisian kas melalui Tambah saldo ketika dana benar-benar dipindahkan.</p>
+
+  <% if (project) { %>
+    <% const f = flows.find(x => x.project.id === project.id); %>
+    <h3 class="section"><%= project.code %> — <%= project.name %></h3>
+    <div class="card">
+      <div class="kv">
+        <% if (project.client) { %><span>Klien</span><span><%= project.client %></span><% } %>
+        <% if (project.contractValue) { %><span>Nilai kontrak</span><span><%= d.rupiah(project.contractValue) %></span><% } %>
+        <span>Penerimaan</span><span class="pos"><%= d.rupiah(f.receipts) %></span>
+        <span>Pengeluaran</span><span class="neg"><%= d.rupiah(f.expenses) %></span>
+        <span>Pengembalian sisa</span><span class="pos"><%= d.rupiah(f.refunds) %></span>
+        <span>Arus kas</span><b class="<%= f.net < 0 ? 'neg' : '' %>"><%= d.rupiah(f.net) %></b>
+      </div>
+    </div>
+    <% if (movements.length) { %>
+    <div class="card table-card">
+      <table class="ledger"><tbody>
+        <% const kind = { receipt: 'Penerimaan', transfer: 'Pengeluaran', refund: 'Pengembalian sisa' }; %>
+        <% movements.forEach(m => { %>
+          <tr>
+            <td><b><%= kind[m.kind] %></b><%= m.source ? ' · ' + SOURCES[m.source] : '' %><br><span class="muted small"><%= d.formatDate(m.date) %> · <% if (m.requestId) { %><a href="/proc/<%= m.requestId %>"><%= m.note %></a><% } else { %><%= m.note %><% } %></span></td>
+            <td class="<%= m.amount > 0 ? 'pos' : 'neg' %>"><%= m.amount > 0 ? '+' : '−' %> <%= d.rupiah(Math.abs(m.amount)) %></td>
+          </tr>
+        <% }) %>
+      </tbody></table>
+    </div>
+    <% } %>
+  <% } %>
+
+  <div class="table-plain">
+    <table class="flow">
+      <thead><tr><th>Kode / Project</th><th>Penerimaan</th><th>Pengeluaran</th></tr></thead>
+      <tbody>
+        <% if (!flows.length) { %><tr><td colspan="3" class="muted">Belum ada project.</td></tr><% } %>
+        <% flows.forEach(f => { %>
+          <tr><td><a href="/kas?tab=cashflow&periode=<%= period || 'semua' %>&project=<%= f.project.id %>"><%= f.project.code %> — <%= f.project.name %></a></td><td><%= d.rupiah(f.receipts) %></td><td><%= d.rupiah(f.expenses) %></td></tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+<% } %>
+<%- include('../partials/foot') %>

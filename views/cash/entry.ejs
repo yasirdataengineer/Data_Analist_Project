@@ -1,0 +1,21 @@
+<%- include('../partials/head', { title: heading, back: '/kas?tab=petty' }) %>
+<%- include('../partials/pagehead', { back: '/kas?tab=petty', eyebrow: 'Lap Pettycash', heading: heading, sub: type === 'topup' ? 'Catat ketika dana benar-benar dipindahkan ke Petty Cash.' : '' }) %>
+<% if (type === 'refund' && !refundable.length) { %>
+  <div class="card empty">Tidak ada pengajuan dengan sisa dana yang belum dikembalikan.</div>
+<% } else { %>
+<form class="card form" method="post" action="/kas/entry">
+  <input type="hidden" name="type" value="<%= type %>">
+  <% if (type === 'refund') { %>
+    <label>Pengajuan
+      <select name="requestId" required>
+        <% refundable.forEach(r => { %><option value="<%= r.id %>" <%= query.request === r.id ? 'selected' : '' %>><%= r.number %> · <%= r.userName %> · sisa <%= d.rupiah(r.outstanding) %></option><% }) %>
+      </select>
+    </label>
+  <% } %>
+  <label>Nominal (Rp)<input name="amount" inputmode="numeric" required></label>
+  <label>Tanggal<input type="date" name="date" value="<%= today %>" required></label>
+  <label>Catatan<input name="note"></label>
+  <button class="btn">Simpan</button>
+</form>
+<% } %>
+<%- include('../partials/foot') %>

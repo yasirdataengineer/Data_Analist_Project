@@ -1,0 +1,38 @@
+<%- include('../partials/head', { title: 'Rekap bulanan', back: '/' }) %>
+<%- include('../partials/pagehead', { back: '/', eyebrow: 'Sistem Payroll', heading: 'Rekap ' + d.formatMonth(month), sub: 'Total diterima semua karyawan: ' + d.rupiah(total) }) %>
+
+<div class="grid">
+  <a class="card card-link tile" href="/payroll/lembur"><h2>Persetujuan lembur</h2><p class="muted"><%= approvals.overtime %> menunggu</p></a>
+  <a class="card card-link tile" href="/payroll/kasbon"><h2>Kasbon</h2><p class="muted"><%= approvals.cash %> menunggu</p></a>
+  <a class="card card-link tile" href="/payroll/koreksi"><h2>Koreksi lembur</h2><p class="muted"><%= approvals.corrections %> menunggu</p></a>
+  <a class="card card-link tile" href="/payroll/gaji"><h2>Data gaji</h2><p class="muted">Gaji pokok, tunjangan</p></a>
+</div>
+
+<form class="search" method="get">
+  <input type="month" name="bulan" value="<%= month %>" onchange="this.form.submit()">
+</form>
+
+<form method="post" action="/payroll/rekap/finalisasi">
+  <input type="hidden" name="bulan" value="<%= month %>">
+  <div class="card table-card">
+    <table>
+      <thead><tr><th></th><th>Karyawan</th><th>Hadir</th><th>Lembur</th><th>Kasbon</th><th>Diterima</th></tr></thead>
+      <tbody>
+        <% rows.forEach(r => { %>
+          <tr>
+            <td><% if (!r.paid && r.slip.configured) { %><input type="checkbox" name="userId" value="<%= r.user.id %>" checked><% } else if (r.paid) { %>✓<% } %></td>
+            <td><%= r.user.name %><% if (!r.slip.configured) { %><br><a class="small" href="/payroll/gaji">atur gaji</a><% } %></td>
+            <td><%= r.slip.presentDays %></td>
+            <td><%= (r.slip.overtimeMinutes / 60).toFixed(1) %> j</td>
+            <td><%= d.rupiah(r.slip.cashAdvanceTotal) %></td>
+            <td><b><%= d.rupiah(r.slip.net) %></b></td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+  <% if (rows.some(r => !r.paid && r.slip.configured)) { %>
+    <button class="btn btn-block" onclick="return confirm('Finalisasi slip yang dicentang? Data bulan ini akan dikunci.')">Finalisasi &amp; terbitkan slip</button>
+  <% } %>
+</form>
+<%- include('../partials/foot') %>

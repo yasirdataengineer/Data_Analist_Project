@@ -1,0 +1,18 @@
+<%- include('../partials/head', { title: 'Data gaji', back: '/payroll' }) %>
+<%- include('../partials/pagehead', { back: '/payroll', eyebrow: 'Sistem Payroll', heading: 'Data gaji karyawan', sub: 'Upah lembur/jam dikosongkan = gaji pokok ÷ 173.' }) %>
+<% rows.forEach(r => { %>
+  <form class="card form" method="post" action="/payroll/gaji/<%= r.user.id %>">
+    <h2><%= r.user.name %></h2>
+    <label>Jabatan<input name="position" value="<%= r.salary.position || '' %>"></label>
+    <div class="row two">
+      <label>Gaji pokok<input name="base" inputmode="numeric" value="<%= r.salary.base || '' %>"></label>
+      <label>Tunjangan<input name="allowance" inputmode="numeric" value="<%= r.salary.allowance || '' %>"></label>
+    </div>
+    <div class="row two">
+      <label>Potongan tetap<input name="deduction" inputmode="numeric" value="<%= r.salary.deduction || '' %>"></label>
+      <label>Upah lembur/jam<input name="overtimeRate" inputmode="numeric" value="<%= r.salary.overtimeRate || '' %>" placeholder="otomatis"></label>
+    </div>
+    <button class="btn">Simpan</button>
+  </form>
+<% }) %>
+<%- include('../partials/foot') %>

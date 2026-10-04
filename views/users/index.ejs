@@ -1,0 +1,38 @@
+<%- include('../partials/head', { title: 'Kelola pengguna', back: '/' }) %>
+<%- include('../partials/pagehead', { back: '/', eyebrow: 'TJP / EJS', heading: 'Kelola akses pengguna', sub: 'Pilih karyawan yang sudah terdaftar dan terhubung ke Telegram.' }) %>
+
+<a class="btn" href="/pengguna/tambah">Tambah pengguna<%= pending.length ? ' (' + pending.length + ' baru)' : '' %></a>
+
+<div class="prose">
+  <p>Akses tambahan mengikuti akun Telegram karyawan yang dipilih.</p>
+  <hr>
+  <p><b>Admin:</b> akses Payroll, Proc &amp; Res, Petty Cash, Cash Flow Project, dan pengelolaan pengguna. Sistem Absensi tidak tersedia.</p>
+  <p><b>Management:</b> lihat laporan absensi, progres, pengajuan, Petty Cash, dan arus kas proyek.</p>
+  <p>Persetujuan pengajuan, perubahan hak akses pengguna, dan pengaturan bot tetap oleh pemilik.</p>
+</div>
+
+<% const card = (u) => { %>
+  <div class="card">
+    <div class="row"><h2 class="item-title"><%= u.name %></h2><span class="status role-<%= u.role %>"><%= ROLES[u.role] || 'Baru' %></span></div>
+    <p class="muted"><%= u.company || '—' %><%= u.username ? ' · @' + u.username : '' %></p>
+    <% if (canEdit(u)) { %>
+      <form class="inline-form" method="post" action="/pengguna/<%= u.id %>">
+        <select name="role" aria-label="Peran">
+          <% assignable.forEach(r => { %><option value="<%= r %>" <%= u.role === r ? 'selected' : '' %>><%= ROLES[r] %></option><% }) %>
+        </select>
+        <select name="company" aria-label="Perusahaan">
+          <% COMPANIES.forEach(c => { %><option <%= u.company === c ? 'selected' : '' %>><%= c %></option><% }) %>
+        </select>
+        <button class="btn btn-ghost">Simpan</button>
+      </form>
+      <form method="post" action="/pengguna/<%= u.id %>">
+        <input type="hidden" name="active" value="<%= u.active ? '0' : '1' %>">
+        <button class="linkish <%= u.active ? 'danger' : '' %>"><%= u.active ? 'Cabut akses' : 'Aktifkan kembali' %></button>
+      </form>
+    <% } %>
+  </div>
+<% } %>
+
+<% active.forEach(card) %>
+<% if (revoked.length) { %><h3 class="section">Akses dicabut</h3><% revoked.forEach(card) %><% } %>
+<%- include('../partials/foot') %>

@@ -1,0 +1,53 @@
+<%- include('../partials/head', { title: 'Sistem Payroll', back: '/' }) %>
+<%- include('../partials/pagehead', { back: '/', eyebrow: 'Sistem Payroll', heading: 'Slip gaji', sub: '' }) %>
+
+<form class="search" method="get">
+  <input type="month" name="bulan" value="<%= month %>" onchange="this.form.submit()">
+</form>
+
+<div class="card">
+  <div class="row">
+    <span class="muted"><%= d.formatMonth(month) %></span>
+    <span class="status <%= paid ? 'status-approved' : 'status-pending' %>"><%= paid ? 'Final' : 'Estimasi berjalan' %></span>
+  </div>
+  <% if (!slip.configured) { %>
+    <p class="muted">Data gaji Anda belum diatur admin.</p>
+  <% } else { %>
+    <div class="big"><%= d.rupiah(slip.net) %></div>
+    <p class="muted small">Total diterima</p>
+    <table class="slip">
+      <tr><td>Gaji pokok</td><td><%= d.rupiah(slip.base) %></td></tr>
+      <tr><td>Tunjangan</td><td><%= d.rupiah(slip.allowance) %></td></tr>
+      <tr><td>Lembur (<%= (slip.overtimeMinutes / 60).toFixed(1) %> jam)</td><td><%= d.rupiah(slip.overtimeTotal) %></td></tr>
+      <tr class="sum"><td>Pendapatan kotor</td><td><%= d.rupiah(slip.gross) %></td></tr>
+      <tr><td>Potongan kasbon</td><td>− <%= d.rupiah(slip.cashAdvanceTotal) %></td></tr>
+      <% if (slip.otherDeduction) { %><tr><td>Potongan lain</td><td>− <%= d.rupiah(slip.otherDeduction) %></td></tr><% } %>
+      <tr class="sum"><td>Diterima</td><td><%= d.rupiah(slip.net) %></td></tr>
+    </table>
+    <p class="muted small">Hadir <%= slip.presentDays %> hari · Upah lembur/jam <%= d.rupiah(slip.hourlyRate) %> (jam ke-1 ×1,5; berikutnya ×2)</p>
+  <% } %>
+</div>
+
+<% if (slip.overtimeLines.length) { %>
+<h3 class="section">Rincian lembur</h3>
+<div class="card table-card">
+  <table>
+    <thead><tr><th>Tanggal</th><th>Jam</th><th>Upah</th></tr></thead>
+    <tbody>
+      <% slip.overtimeLines.forEach(l => { %>
+        <tr><td><%= d.formatDate(l.date) %><% if (l.corrected) { %> <span class="tag">koreksi</span><% } %></td><td><%= l.start %>–<%= l.end %></td><td><%= d.rupiah(l.pay) %></td></tr>
+      <% }) %>
+    </tbody>
+  </table>
+</div>
+<% } %>
+
+<div class="grid">
+  <a class="card card-link tile" href="/payroll/kasbon"><h2>Kasbon</h2><p class="muted"><%= pendingCash %> menunggu</p></a>
+  <a class="card card-link tile" href="/payroll/koreksi"><h2>Koreksi lembur</h2><p class="muted"><%= pendingCorr %> menunggu</p></a>
+  <% if (can('payroll.manage')) { %>
+    <a class="card card-link tile" href="/payroll/rekap?bulan=<%= month %>"><h2>Rekap bulanan</h2><p class="muted">Semua karyawan</p></a>
+    <a class="card card-link tile" href="/payroll/gaji"><h2>Data gaji</h2><p class="muted">Gaji pokok, tunjangan</p></a>
+  <% } %>
+</div>
+<%- include('../partials/foot') %>

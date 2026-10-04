@@ -1,0 +1,40 @@
+<%- include('../partials/head', { title: 'Sistem Proc & Res', back: '/' }) %>
+<a class="backlink" href="/">← Kembali</a>
+<p class="kicker">Monitoring Progres pekerjaan &amp; pengajuan</p>
+<p class="eyebrow">TJP / EJS</p>
+<h1 class="h2">Pengajuan &amp; laporan dana</h1>
+<p class="lead">Ajukan kebutuhan, tunggu persetujuan pemilik, lalu tutup dengan laporan dan foto bukti.</p>
+
+<% if (can('proc.request')) { %><a class="btn" href="/proc/baru">＋ Buat pengajuan</a><% } %>
+
+<% if (can('kas.view')) { %>
+<p class="links muted">
+  <a href="/kas?tab=approval">Approval &amp; bukti transfer</a> · <a href="/kas?tab=petty">Petty Cash</a> · <a href="/kas?tab=cashflow">Cash Flow Project</a>
+</p>
+<% } %>
+<% if (can('proc.configure')) { %>
+<div class="btn-row">
+  <a class="btn btn-outline" href="/proc/jenis">Kelola Jenis Pengajuan</a>
+  <a class="btn btn-outline" href="/proc/kategori">Kelola Kategori Tujuan</a>
+</div>
+<% } %>
+
+<a class="card stat-row" href="/proc?status=pending"><span>Menunggu persetujuan</span><b><%= counts.pending %></b></a>
+<a class="card stat-row" href="/proc?status=transferred"><span>Laporan belum selesai</span><b><%= counts.openReports %></b></a>
+
+<form class="search" method="get">
+  <% if (can('proc.viewAll')) { %>
+  <select name="scope" onchange="this.form.submit()">
+    <option value="semua" <%= viewScope === 'semua' ? 'selected' : '' %>>Semua pengajuan</option>
+    <option value="saya" <%= viewScope === 'saya' ? 'selected' : '' %>>Pengajuan saya</option>
+  </select>
+  <% } %>
+  <select name="status" onchange="this.form.submit()">
+    <option value="">Semua status</option>
+    <% Object.entries(STATUS).forEach(([k, v]) => { %><option value="<%= k %>" <%= status === k ? 'selected' : '' %>><%= v %></option><% }) %>
+  </select>
+</form>
+
+<% if (!rows.length) { %><div class="card empty">Belum ada pengajuan.</div><% } %>
+<% rows.forEach(r => { %><%- include('../partials/request-card', { r }) %><% }) %>
+<%- include('../partials/foot') %>

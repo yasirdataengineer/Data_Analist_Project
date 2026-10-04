@@ -1,0 +1,31 @@
+<%- include('../partials/head', { title: label, back: '/proc' }) %>
+<%- include('../partials/pagehead', { back: '/proc', eyebrow: 'Sistem Proc & Res', heading: 'Kelola ' + label, sub: collection === 'procCategories' ? 'Kategori yang wajib project akan meminta pengaju memilih project, sehingga masuk ke arus kas project.' : '' }) %>
+
+<form class="card form" method="post" action="/proc/<%= view %>">
+  <label><%= label %> baru<input name="name" required></label>
+  <% if (collection === 'procCategories') { %>
+    <label class="check"><input type="checkbox" name="requiresProject" value="1"> Wajib pilih project</label>
+  <% } %>
+  <button class="btn">Tambah</button>
+</form>
+
+<% rows.forEach(row => { %>
+  <div class="card compact">
+    <form class="inline-form" method="post" action="/proc/<%= view %>/<%= row.id %>">
+      <input name="name" value="<%= row.name %>" aria-label="Nama">
+      <% if (collection === 'procCategories') { %>
+        <select name="requiresProject" aria-label="Project">
+          <option value="1" <%= row.requiresProject ? 'selected' : '' %>>Wajib project</option>
+          <option value="0" <%= row.requiresProject ? '' : 'selected' %>>Tanpa project</option>
+        </select>
+      <% } %>
+      <button class="btn btn-ghost">Simpan</button>
+    </form>
+    <form method="post" action="/proc/<%= view %>/<%= row.id %>">
+      <input type="hidden" name="active" value="<%= row.active ? '0' : '1' %>">
+      <span class="status <%= row.active ? 'status-closed' : 'status-rejected' %>"><%= row.active ? 'Aktif' : 'Nonaktif' %></span>
+      <button class="linkish"><%= row.active ? 'Nonaktifkan' : 'Aktifkan' %></button>
+    </form>
+  </div>
+<% }) %>
+<%- include('../partials/foot') %>

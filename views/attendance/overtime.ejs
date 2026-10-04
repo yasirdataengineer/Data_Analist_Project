@@ -1,0 +1,24 @@
+<%- include('../partials/head', { title: 'Pengajuan lembur', back: '/absensi' }) %>
+<%- include('../partials/pagehead', { back: '/absensi', eyebrow: 'Sistem Absensi', heading: 'Pengajuan lembur' }) %>
+<% const label = { pending: 'Menunggu', approved: 'Disetujui', rejected: 'Ditolak' }; %>
+
+<h3 class="section">Ajukan lembur</h3>
+<form class="card form" method="post" action="/absensi/lembur">
+  <label>Tanggal<input type="date" name="date" value="<%= today %>" required></label>
+  <div class="row two">
+    <label>Mulai<input type="time" name="start" value="17:00" required></label>
+    <label>Selesai<input type="time" name="end" value="20:00" required></label>
+  </div>
+  <label>Alasan / pekerjaan *<textarea name="reason" rows="3" required></textarea></label>
+  <button class="btn">Kirim pengajuan</button>
+</form>
+
+<h3 class="section">Pengajuan saya</h3>
+<% if (!mine.length) { %><div class="card empty">Belum ada pengajuan.</div><% } %>
+<% mine.forEach(o => { %>
+  <div class="card compact">
+    <div class="row"><b><%= d.formatDate(o.date) %> · <%= o.start %>–<%= o.end %></b><span class="status status-<%= o.status %>"><%= label[o.status] %></span></div>
+    <p class="muted"><%= o.reason %></p>
+  </div>
+<% }) %>
+<%- include('../partials/foot') %>

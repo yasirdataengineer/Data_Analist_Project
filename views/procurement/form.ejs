@@ -1,0 +1,40 @@
+<%- include('../partials/head', { title: 'Buat pengajuan', back: '/proc' }) %>
+<%- include('../partials/pagehead', { back: '/proc', eyebrow: 'Sistem Proc & Res', heading: 'Buat pengajuan', sub: 'Pengajuan akan dikirim ke pemilik untuk disetujui.' }) %>
+<form class="card form" method="post" action="/proc" enctype="multipart/form-data">
+  <label>Jenis pengajuan *
+    <select name="typeId" required>
+      <% types.forEach(t => { %><option value="<%= t.id %>"><%= t.name %></option><% }) %>
+    </select>
+  </label>
+  <label>Kategori tujuan *
+    <select name="categoryId" required id="cat">
+      <% categories.forEach(c => { %><option value="<%= c.id %>" data-project="<%= c.requiresProject ? 1 : 0 %>"><%= c.name %></option><% }) %>
+    </select>
+  </label>
+  <label id="proj">Project
+    <select name="projectId">
+      <option value="">— Pilih project —</option>
+      <% projects.forEach(p => { %><option value="<%= p.id %>"><%= p.code %> — <%= p.name %></option><% }) %>
+    </select>
+  </label>
+  <label>Nominal (Rp) *<input name="amount" inputmode="numeric" required placeholder="200000"></label>
+  <label>Keperluan *<input name="description" required placeholder="mis. BBM + tol ke site"></label>
+  <label>Dibutuhkan tanggal<input type="date" name="neededBy"></label>
+  <label>Rincian / catatan<textarea name="notes" rows="3"></textarea></label>
+  <label>Lampiran (penawaran, foto barang)<input type="file" name="attachments" accept="image/*,application/pdf" multiple></label>
+  <button class="btn">Kirim pengajuan</button>
+</form>
+<script>
+  (() => {
+    const cat = document.getElementById('cat');
+    const proj = document.getElementById('proj');
+    const sync = () => {
+      const needs = cat.selectedOptions[0]?.dataset.project === '1';
+      proj.hidden = !needs && !proj.querySelector('select').value;
+      proj.querySelector('select').required = needs;
+    };
+    cat.addEventListener('change', sync);
+    sync();
+  })();
+</script>
+<%- include('../partials/foot') %>

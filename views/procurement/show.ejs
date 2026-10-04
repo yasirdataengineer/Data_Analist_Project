@@ -1,0 +1,90 @@
+<%- include('../partials/head', { title: r.number, back: '/proc' }) %>
+<%- include('../partials/pagehead', { back: '/proc', eyebrow: r.number + ' · ' + r.categoryName, heading: r.headline, sub: r.userName + (r.projectLabel ? ' — ' + r.projectLabel : '') }) %>
+
+<div class="card">
+  <span class="status status-<%= r.status %>"><%= STATUS[r.status] %></span>
+  <p class="item-title"><%= r.description %></p>
+  <% if (r.notes) { %><p class="note"><%= r.notes %></p><% } %>
+  <div class="kv">
+    <span>Diajukan</span><span><%= d.formatDateTime(r.createdAt) %></span>
+    <% if (r.neededBy) { %><span>Dibutuhkan</span><span><%= d.formatDate(r.neededBy) %></span><% } %>
+    <% if (r.approval) { %>
+      <span><%= r.status === 'rejected' ? 'Ditolak' : 'Disetujui' %></span><span><%= approverName %> · <%= d.formatDateTime(r.approval.at) %></span>
+      <% if (r.approval.amount) { %><span>Nominal disetujui</span><b><%= d.rupiah(r.approval.amount) %></b><% } %>
+      <% if (r.approval.note) { %><span>Catatan</span><span><%= r.approval.note %></span><% } %>
+    <% } %>
+    <% if (r.transferredTotal) { %><span>Total ditransfer</span><b><%= d.rupiah(r.transferredTotal) %></b><% } %>
+  </div>
+  <% if (r.attachments && r.attachments.length) { %><div class="gallery small"><% r.attachments.forEach(src => { %><a href="<%= src %>" target="_blank"><img src="<%= src %>" alt="Lampiran" loading="lazy"></a><% }) %></div><% } %>
+</div>
+
+<% if (r.status === 'pending' && can('proc.approve')) { %>
+<h3 class="section">Persetujuan pemilik</h3>
+<form class="card form" method="post">
+  <label>Nominal disetujui<input name="amount" inputmode="numeric" value="<%= r.amount %>"></label>
+  <label>Catatan<textarea name="note" rows="2"></textarea></label>
+  <div class="actions">
+    <button class="btn" formaction="/proc/<%= r.id %>/approve">Setujui</button>
+    <button class="btn btn-ghost" formaction="/proc/<%= r.id %>/reject">Tolak</button>
+  </div>
+</form>
+<% } else if (r.status === 'pending') { %>
+  <p class="muted">Menunggu persetujuan pemilik.</p>
+<% } %>
+
+<% const shortfall = r.status === 'closed' && r.outstanding < 0; %>
+<% if (can('kas.manage') && (r.status === 'approved' || r.status === 'transferred' || shortfall)) { %>
+<h3 class="section"><%= shortfall ? 'Transfer kekurangan' : 'Transfer & bukti' %></h3>
+<form class="card form" method="post" action="/proc/<%= r.id %>/transfer" enctype="multipart/form-data">
+  <% const suggest = shortfall ? -r.outstanding : Math.max((r.approval?.amount || r.amount) - r.transferredTotal, 0); %>
+  <label>Nominal transfer<input name="amount" inputmode="numeric" value="<%= suggest || '' %>" required></label>
+  <label>Tanggal transfer<input type="date" name="date" value="<%= today %>" required></label>
+  <label>Sumber pembayaran
+    <select name="source">
+      <% Object.entries(SOURCES).forEach(([k, v]) => { %><option value="<%= k %>"><%= v %><%= k === 'petty' ? ' (saldo ' + d.rupiah(pettyBalance) + ')' : '' %></option><% }) %>
+    </select>
+  </label>
+  <p class="muted small">Hanya transfer dari Petty Cash yang mengurangi saldo kas; Rekening Induk TJP tetap tercatat dalam arus kas proyek.</p>
+  <label>Bukti transfer *<input type="file" name="proof" accept="image/*,application/pdf" required></label>
+  <label>Catatan<input name="note"></label>
+  <button class="btn">Simpan transfer</button>
+</form>
+<% } %>
+
+<% if (transfers.length) { %>
+<h3 class="section">Transfer</h3>
+<% transfers.forEach(t => { %>
+  <div class="card compact">
+    <div class="row"><b><%= d.rupiah(t.amount) %></b><span class="tag"><%= SOURCES[t.source] %></span></div>
+    <p class="muted small"><%= d.formatDate(t.date) %> · oleh <%= t.byName %><%= t.note ? ' · ' + t.note : '' %></p>
+    <a href="<%= t.proof %>" target="_blank">Lihat bukti transfer</a>
+  </div>
+<% }) %>
+<% } %>
+
+<% if (r.status === 'transferred' && r.userId === user.id) { %>
+<h3 class="section">Laporan &amp; foto bukti</h3>
+<form class="card form" method="post" action="/proc/<%= r.id %>/laporan" enctype="multipart/form-data">
+  <label>Nominal terpakai (Rp)<input name="actualAmount" inputmode="numeric" value="<%= r.transferredTotal %>" required></label>
+  <label>Foto nota / bukti *<input type="file" name="photos" accept="image/*" multiple required capture="environment"></label>
+  <label>Catatan<textarea name="note" rows="3" placeholder="Barang diterima, sisa uang akan dikembalikan, dll."></textarea></label>
+  <button class="btn">Tutup dengan laporan</button>
+</form>
+<% } %>
+
+<% if (r.report) { %>
+<h3 class="section">Laporan</h3>
+<div class="card">
+  <div class="kv">
+    <span>Ditransfer</span><span><%= d.rupiah(r.transferredTotal) %></span>
+    <span>Terpakai</span><b><%= d.rupiah(r.report.actualAmount) %></b>
+    <% if (r.outstanding > 0) { %><span>Sisa belum dikembalikan</span><b class="neg"><%= d.rupiah(r.outstanding) %></b><% } %>
+    <% if (r.outstanding < 0) { %><span>Kekurangan dibayar kantor</span><b class="neg"><%= d.rupiah(-r.outstanding) %></b><% } %>
+  </div>
+  <% if (r.report.note) { %><p class="note"><%= r.report.note %></p><% } %>
+  <div class="gallery"><% r.report.photos.forEach(src => { %><a href="<%= src %>" target="_blank"><img src="<%= src %>" alt="Bukti" loading="lazy"></a><% }) %></div>
+  <p class="muted small">Ditutup <%= d.formatDateTime(r.report.at) %></p>
+  <% if (r.outstanding > 0 && can('kas.manage')) { %><a class="btn btn-ghost" href="/kas/pengembalian?request=<%= r.id %>">Catat pengembalian sisa</a><% } %>
+</div>
+<% } %>
+<%- include('../partials/foot') %>
