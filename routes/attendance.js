@@ -4,8 +4,15 @@ const { notify } = require('../lib/telegram');
 const { badRequest } = require('../lib/errors');
 const { todayKey, minutesBetween } = require('../lib/dates');
 
-module.exports = ({ store, upload, config, isAdmin }) => {
+module.exports = ({ store, upload, config, need }) => {
   const router = express.Router();
+
+  // Management/owner only see the team report; personal attendance is for karyawan.
+  router.use((req, res, next) => {
+    if (req.path.startsWith('/tim')) return next();
+    if (req.can('attendance.self')) return next();
+    res.redirect('/absensi/tim');
+  });
 
   const todayRecord = (userId) => store.find('attendance', (a) => a.userId === userId && a.date === todayKey());
   const location = (body) =>
@@ -20,7 +27,6 @@ module.exports = ({ store, upload, config, isAdmin }) => {
       plan: store.find('workPlans', (p) => p.userId === uid && p.date === today),
       report: store.find('dailyReports', (r) => r.userId === uid && r.date === today),
       pendingOvertime: store.filter('overtime', (o) => o.userId === uid && o.status === 'pending').length,
-      approvals: isAdmin(req.user) ? store.filter('overtime', (o) => o.status === 'pending').length : 0,
     });
   });
 
@@ -105,12 +111,8 @@ module.exports = ({ store, upload, config, isAdmin }) => {
   // --- Pengajuan lembur -----------------------------------------------------
 
   router.get('/lembur', (req, res) => {
-    const userName = (id) => store.find('users', (u) => u.id === id)?.name || '-';
     const mine = store.filter('overtime', (o) => o.userId === req.user.id).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-    const pending = isAdmin(req.user)
-      ? store.filter('overtime', (o) => o.status === 'pending').map((o) => ({ ...o, userName: userName(o.userId) }))
-      : [];
-    res.render('attendance/overtime', { mine, pending, today: todayKey() });
+    res.render('attendance/overtime', { mine, today: todayKey() });
   });
 
   router.post('/lembur', (req, res) => {
@@ -130,26 +132,28 @@ module.exports = ({ store, upload, config, isAdmin }) => {
     res.redirect('/absensi/lembur?ok=Pengajuan lembur terkirim');
   });
 
-  router.post('/lembur/:id/:action(approve|reject)', (req, res, next) => {
-    if (!isAdmin(req.user)) throw badRequest('Hanya admin yang bisa menyetujui lembur.');
-    const ot = store.find('overtime', (o) => o.id === req.params.id);
-    if (!ot) return next();
-    if (ot.status !== 'pending') throw badRequest('Pengajuan ini sudah diproses.');
-    if (store.find('payrolls', (p) => p.userId === ot.userId && p.month === ot.date.slice(0, 7))) {
-      throw badRequest('Payroll bulan tersebut sudah difinalisasi; ajukan lewat koreksi lembur bulan berjalan.');
-    }
-    const status = req.params.action === 'approve' ? 'approved' : 'rejected';
-    store.update('overtime', ot.id, { status, decidedBy: req.user.id, decidedAt: new Date().toISOString() });
-    // The requester's Telegram user id doubles as their private chat id with the bot.
-    notify(config, ot.userId, `Pengajuan lembur ${ot.date} ${ot.start}–${ot.end} ${status === 'approved' ? '✅ disetujui' : '❌ ditolak'} oleh ${req.user.name}`);
-    res.redirect('/absensi/lembur?ok=Pengajuan diproses');
-  });
-
   // --- Riwayat --------------------------------------------------------------
 
   router.get('/riwayat', (req, res) => {
     const rows = store.filter('attendance', (a) => a.userId === req.user.id).sort((a, b) => b.date.localeCompare(a.date)).slice(0, 60);
     res.render('attendance/history', { rows });
+  });
+
+  // --- Laporan tim (owner / management) -------------------------------------
+
+  router.get('/tim', need('attendance.report'), (req, res) => {
+    const date = /^\d{4}-\d{2}-\d{2}$/.test(req.query.date || '') ? req.query.date : todayKey();
+    const rows = store
+      .filter('users', (u) => u.active && u.role === 'karyawan')
+      .map((u) => ({
+        user: u,
+        record: store.find('attendance', (a) => a.userId === u.id && a.date === date),
+        plan: store.find('workPlans', (p) => p.userId === u.id && p.date === date),
+        report: store.find('dailyReports', (r) => r.userId === u.id && r.date === date),
+        overtime: store.filter('overtime', (o) => o.userId === u.id && o.date === date && o.status !== 'rejected'),
+      }))
+      .sort((a, b) => a.user.name.localeCompare(b.user.name));
+    res.render('attendance/team', { date, rows, present: rows.filter((r) => r.record).length });
   });
 
   return router;

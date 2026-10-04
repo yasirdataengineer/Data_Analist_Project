@@ -13,6 +13,12 @@
   <h2>Login development</h2>
   <label>Nama<input name="name" value="Pak yasir"></label>
   <label>ID Telegram<input name="id" value="dev-1"></label>
+  <label>Peran (dev)
+    <select name="role">
+      <option value="">— dari data / menunggu akses —</option>
+      <% Object.entries(ROLES).forEach(([k, v]) => { %><option value="<%= k %>"><%= v %></option><% }) %>
+    </select>
+  </label>
   <button class="btn">Masuk</button>
 </form>
 <% } %>

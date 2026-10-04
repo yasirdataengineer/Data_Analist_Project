@@ -1,32 +1,35 @@
 <%- include('partials/head') %>
+<%
+  const icons = {
+    trend: '<path d="M3 17l6-6 4 4 8-8M15 7h6v6"/>',
+    clipboard: '<rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3h6v1M9 13l2 2 4-4"/>',
+    wallet: '<path d="M4 7a2 2 0 0 1 2-2h11v4"/><path d="M4 7v11a2 2 0 0 0 2 2h13V9H6a2 2 0 0 1-2-2z"/><path d="M16 13h4v3h-4a1.5 1.5 0 0 1 0-3z"/>',
+    cart: '<path d="M3 4h2l2.4 11h11L21 8H6.2"/><circle cx="9" cy="19.5" r="1.3"/><circle cx="17" cy="19.5" r="1.3"/>',
+    receipt: '<path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M14.5 8.5c-.4-.9-1.3-1.5-2.5-1.5-1.4 0-2.5.8-2.5 2s1.1 1.6 2.5 2 2.5.8 2.5 2-1.1 2-2.5 2c-1.2 0-2.1-.6-2.5-1.5M12 6v1M12 15v1"/>',
+  };
+  const cards = [
+    { show: can('progress.view'), href: '/progres', icon: 'trend', title: 'Monitoring Progres', desc: 'Persentase pekerjaan, foto terbaru, dan riwayat update setiap PIC.', cta: 'Buka progres' },
+    { show: can('attendance.self') || can('attendance.report'), href: '/absensi', icon: 'clipboard', title: 'Sistem Absensi', desc: 'Absensi, rencana pekerjaan, laporan progres, dan pengajuan lembur.', cta: 'Buka absensi' },
+    { show: can('payroll.self') || can('payroll.manage'), href: '/payroll', icon: 'wallet', title: 'Sistem Payroll', desc: 'Penggajian, rekap bulanan, koreksi lembur, dan kasbon.', cta: 'Buka payroll' },
+    { show: can('proc.request') || can('proc.viewAll'), href: '/proc', icon: 'cart', title: 'Sistem Proc & Res', desc: 'Pengajuan operasional, pembelian barang, kebutuhan lainnya, dan laporan PIC.', cta: 'Buka sistem' },
+    { show: can('kas.view'), href: '/kas?tab=petty', icon: 'receipt', title: 'Lap Pettycash', desc: 'Saldo kas, transfer pengajuan, dan laporan penggunaan dana.', cta: 'Buka laporan' },
+    { show: can('kas.view'), href: '/kas?tab=approval', icon: 'clipboard', title: 'Approval & Bukti Transfer', desc: 'Setujui pengajuan dan lampirkan bukti transfer.', cta: 'Buka approval' },
+    { show: can('kas.view'), href: '/kas?tab=cashflow', icon: 'trend', title: 'Cash Flow Project', desc: 'Input proyek, penerimaan, dan pantau pengeluaran per proyek.', cta: 'Buka cash flow' },
+    { show: can('users.manage'), href: '/pengguna', icon: 'clipboard', title: 'User Admin / Management', desc: 'Tambah pengguna, ubah peran, dan aktifkan atau cabut akses.', cta: 'Kelola pengguna' },
+  ].filter(c => c.show);
+%>
 <p class="eyebrow">TJP / EJS</p>
 <h1 class="display">Satu pintu untuk pekerjaan Anda.</h1>
 <p class="lead">Pilih sistem yang ingin digunakan.</p>
 
-<a class="card card-link" href="/progres">
-  <svg viewBox="0 0 24 24" class="ico ico-lg" aria-hidden="true"><path d="M3 17l6-6 4 4 8-8M15 7h6v6" fill="none"/></svg>
-  <h2>Monitoring Progres</h2>
-  <p>Persentase pekerjaan, foto terbaru, dan riwayat update setiap PIC.</p>
-  <span class="cta">Buka progres <span aria-hidden="true">↗</span></span>
+<% cards.forEach(c => { %>
+<a class="card card-link" href="<%= c.href %>">
+  <svg viewBox="0 0 24 24" class="ico ico-lg" aria-hidden="true"><%- icons[c.icon] %></svg>
+  <h2><%= c.title %></h2>
+  <p><%= c.desc %></p>
+  <span class="cta"><%= c.cta %> <span aria-hidden="true">↗</span></span>
 </a>
+<% }) %>
 
-<a class="card card-link" href="/absensi">
-  <svg viewBox="0 0 24 24" class="ico ico-lg" aria-hidden="true"><rect x="5" y="4" width="14" height="17" rx="2" fill="none"/><path d="M9 4V3h6v1M9 13l2 2 4-4" fill="none"/></svg>
-  <h2>Sistem Absensi</h2>
-  <p>Absensi, rencana pekerjaan, laporan progres, dan pengajuan lembur.</p>
-  <span class="cta">Buka absensi <span aria-hidden="true">↗</span></span>
-</a>
-<a class="card card-link" href="/payroll">
-  <svg viewBox="0 0 24 24" class="ico ico-lg" aria-hidden="true"><path d="M4 7a2 2 0 0 1 2-2h11v4" fill="none"/><path d="M4 7v11a2 2 0 0 0 2 2h13V9H6a2 2 0 0 1-2-2z" fill="none"/><path d="M16 13h4v3h-4a1.5 1.5 0 0 1 0-3z" fill="none"/></svg>
-  <h2>Sistem Payroll</h2>
-  <p>Penggajian, rekap bulanan, koreksi lembur, dan kasbon.</p>
-  <span class="cta">Buka payroll <span aria-hidden="true">↗</span></span>
-</a>
-
-<a class="card card-link" href="/proc">
-  <svg viewBox="0 0 24 24" class="ico ico-lg" aria-hidden="true"><path d="M3 4h2l2.4 11h11L21 8H6.2" fill="none"/><circle cx="9" cy="19.5" r="1.3"/><circle cx="17" cy="19.5" r="1.3"/></svg>
-  <h2>Sistem Proc &amp; Res</h2>
-  <p>Pengajuan operasional, pembelian barang, kebutuhan lainnya, dan laporan PIC.</p>
-  <span class="cta">Buka sistem <span aria-hidden="true">↗</span></span>
-</a>
+<footer class="footer"><%= appName %> · <%= ROLES[user.role] %><%= user.company ? ' ' + user.company : '' %></footer>
 <%- include('partials/foot') %>

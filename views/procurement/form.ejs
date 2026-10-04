@@ -1,58 +1,40 @@
-<%- include('../partials/head', { title: 'Pengajuan baru', back: '/proc' }) %>
-<%- include('../partials/pagehead', { back: '/proc', eyebrow: 'Sistem Proc & Res', heading: 'Pengajuan baru' }) %>
-<form class="card form" method="post" action="/proc">
-  <label>Jenis
-    <select name="type">
-      <% Object.entries(TYPES).forEach(([k, v]) => { %><option value="<%= k %>" <%= k === type ? 'selected' : '' %>><%= v %></option><% }) %>
+<%- include('../partials/head', { title: 'Buat pengajuan', back: '/proc' }) %>
+<%- include('../partials/pagehead', { back: '/proc', eyebrow: 'Sistem Proc & Res', heading: 'Buat pengajuan', sub: 'Pengajuan akan dikirim ke pemilik untuk disetujui.' }) %>
+<form class="card form" method="post" action="/proc" enctype="multipart/form-data">
+  <label>Jenis pengajuan *
+    <select name="typeId" required>
+      <% types.forEach(t => { %><option value="<%= t.id %>"><%= t.name %></option><% }) %>
     </select>
   </label>
-  <label>Judul *<input name="title" required placeholder="mis. Kabel NYY 4x16 untuk panel UPS"></label>
-  <label>Proyek
+  <label>Kategori tujuan *
+    <select name="categoryId" required id="cat">
+      <% categories.forEach(c => { %><option value="<%= c.id %>" data-project="<%= c.requiresProject ? 1 : 0 %>"><%= c.name %></option><% }) %>
+    </select>
+  </label>
+  <label id="proj">Project
     <select name="projectId">
-      <option value="">— Umum / kantor —</option>
-      <% projects.forEach(p => { %><option value="<%= p.id %>"><%= p.code ? p.code + ' · ' : '' %><%= p.name %></option><% }) %>
+      <option value="">— Pilih project —</option>
+      <% projects.forEach(p => { %><option value="<%= p.id %>"><%= p.code %> — <%= p.name %></option><% }) %>
     </select>
   </label>
+  <label>Nominal (Rp) *<input name="amount" inputmode="numeric" required placeholder="200000"></label>
+  <label>Keperluan *<input name="description" required placeholder="mis. BBM + tol ke site"></label>
   <label>Dibutuhkan tanggal<input type="date" name="neededBy"></label>
-
-  <fieldset>
-    <legend>Item</legend>
-    <div id="items">
-      <div class="item-row">
-        <input name="itemName" placeholder="Nama barang / biaya" required>
-        <div class="row three-col">
-          <input name="itemQty" type="number" min="0" step="any" value="1" aria-label="Qty">
-          <input name="itemUnit" placeholder="Satuan" aria-label="Satuan">
-          <input name="itemPrice" inputmode="numeric" placeholder="Harga satuan" aria-label="Harga satuan">
-        </div>
-      </div>
-    </div>
-    <button type="button" class="btn btn-ghost" id="add-item">+ Tambah item</button>
-    <p class="row"><span class="muted">Estimasi total</span><b id="total">Rp 0</b></p>
-  </fieldset>
-
-  <label>Catatan<textarea name="notes" rows="3" placeholder="Vendor, spesifikasi, alasan kebutuhan…"></textarea></label>
+  <label>Rincian / catatan<textarea name="notes" rows="3"></textarea></label>
+  <label>Lampiran (penawaran, foto barang)<input type="file" name="attachments" accept="image/*,application/pdf" multiple></label>
   <button class="btn">Kirim pengajuan</button>
 </form>
 <script>
   (() => {
-    const box = document.getElementById('items');
-    const tpl = box.firstElementChild;
-    const recalc = () => {
-      let t = 0;
-      box.querySelectorAll('.item-row').forEach((row) => {
-        const qty = Number(row.querySelector('[name=itemQty]').value) || 0;
-        const price = Number(row.querySelector('[name=itemPrice]').value.replace(/\D/g, '')) || 0;
-        t += qty * price;
-      });
-      document.getElementById('total').textContent = 'Rp ' + t.toLocaleString('id-ID');
+    const cat = document.getElementById('cat');
+    const proj = document.getElementById('proj');
+    const sync = () => {
+      const needs = cat.selectedOptions[0]?.dataset.project === '1';
+      proj.hidden = !needs && !proj.querySelector('select').value;
+      proj.querySelector('select').required = needs;
     };
-    document.getElementById('add-item').addEventListener('click', () => {
-      const row = tpl.cloneNode(true);
-      row.querySelectorAll('input').forEach((i) => { i.value = i.name === 'itemQty' ? '1' : ''; i.required = false; });
-      box.appendChild(row);
-    });
-    box.addEventListener('input', recalc);
+    cat.addEventListener('change', sync);
+    sync();
   })();
 </script>
 <%- include('../partials/foot') %>

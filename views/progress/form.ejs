@@ -1,15 +1,20 @@
-<%- include('../partials/head', { title: 'Proyek baru', back: '/progres' }) %>
-<%- include('../partials/pagehead', { back: '/progres', eyebrow: 'Monitoring Progres', heading: 'Proyek baru' }) %>
+<%- include('../partials/head', { title: 'Tambah penugasan', back: '/progres' }) %>
+<%- include('../partials/pagehead', { back: '/progres', eyebrow: 'Monitoring Progres', heading: 'Tambah penugasan' }) %>
 <form class="card form" method="post" action="/progres">
-  <label>Kode proyek<input name="code" placeholder="mis. C006"></label>
-  <label>Nama proyek *<input name="name" required placeholder="mis. UPS MCS Bitung"></label>
-  <label>Lokasi<input name="location"></label>
-  <label>PIC
-    <select name="picId">
-      <% users.forEach(u => { %><option value="<%= u.id %>" <%= u.id === user.id ? 'selected' : '' %>><%= u.name %></option><% }) %>
+  <label>Pekerjaan *<input name="title" required placeholder="mis. Instalasi battery rack UPS"></label>
+  <label>Project
+    <select name="projectId">
+      <option value="">— Umum —</option>
+      <% projects.forEach(p => { %><option value="<%= p.id %>"><%= p.code %> — <%= p.name %></option><% }) %>
     </select>
   </label>
-  <label>Target selesai<input type="date" name="target"></label>
-  <button class="btn">Simpan proyek</button>
+  <label>PIC *
+    <select name="picId" required>
+      <% people.forEach(u => { %><option value="<%= u.id %>"><%= u.name %><%= u.company ? ' · ' + u.company : '' %></option><% }) %>
+    </select>
+  </label>
+  <label>Target selesai<input type="date" name="dueDate"></label>
+  <label>Detail / instruksi<textarea name="description" rows="4"></textarea></label>
+  <button class="btn">Simpan penugasan</button>
 </form>
 <%- include('../partials/foot') %>

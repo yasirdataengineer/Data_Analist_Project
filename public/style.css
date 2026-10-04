@@ -162,3 +162,56 @@ tr:last-child td { border-bottom: 0; }
 .status-done { background: #e8eefc; color: var(--blue); }
 .card .row + .row { margin-top: 6px; }
 .grid.three .plus { display: block; color: var(--blue); font-size: 1.4rem; font-weight: 700; line-height: 1; margin-bottom: 4px; }
+
+/* Users & roles */
+.footer { margin-top: 32px; color: var(--muted); font-size: .9rem; }
+.prose { color: var(--muted); margin: 20px 0; }
+.prose b { color: var(--ink); opacity: .75; }
+.prose hr { border: 0; border-top: 1px solid var(--line); margin: 16px 0; }
+.inline-form { display: flex; gap: 8px; flex-wrap: wrap; margin: 8px 0; }
+.inline-form select { flex: 1; min-width: 120px; margin-top: 0; }
+.linkish { background: none; border: 0; padding: 4px 0; color: var(--blue); font: inherit; font-weight: 600; cursor: pointer; }
+.linkish.danger { color: var(--bad); }
+.role-owner { background: #13294b; color: #fff; }
+.role-admin { background: #e8eefc; color: var(--blue); }
+.role-management { background: #f1e8fc; color: #6b3fb4; }
+.role-karyawan { background: #eef1f5; color: var(--muted); }
+.role-null, .role-undefined { background: #fff4e5; color: var(--warn); }
+
+/* Progress (penugasan) */
+.btn-outline { background: transparent; color: var(--ink); border: 1.5px solid var(--ink); margin-bottom: 20px; }
+.callout { background: rgba(31, 79, 180, .06); border-color: rgba(31, 79, 180, .2); }
+.callout .btn { margin-top: 12px; }
+.stat-row { display: flex; align-items: center; justify-content: space-between; padding: 18px 22px; color: inherit; text-decoration: none; }
+.stat-row b { font-size: 2rem; line-height: 1; }
+.status-open { background: #fff4e5; color: var(--warn); }
+.status-closed { background: #e7f6ee; color: var(--ok); }
+.timeline li.eval::before { background: var(--ok); }
+
+/* Proc & cash */
+.kicker { margin: 4px 0 8px; font-size: 1.05rem; }
+.links { margin: 20px 0 12px; }
+.links a { color: var(--muted); }
+.btn-row { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 20px; }
+.btn-row .btn-outline { margin: 0; }
+.req .status { display: inline-block; margin-bottom: 6px; }
+.status-transferred { background: #e8eefc; color: var(--blue); }
+.kv { display: grid; grid-template-columns: auto 1fr; gap: 6px 16px; margin: 12px 0; }
+.kv > :nth-child(odd) { color: var(--muted); }
+.kv > :nth-child(even) { text-align: right; }
+.tabs { display: flex; flex-wrap: wrap; gap: 4px; padding: 6px; background: var(--line); background: rgba(19, 41, 75, .06); border-radius: 16px; margin: 20px 0; }
+.tabs a { flex: 1 1 45%; text-align: center; padding: 10px 8px; border-radius: 12px; color: var(--muted); text-decoration: none; font-weight: 500; }
+.tabs a.on { background: var(--card); color: var(--ink); box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+.field-label { font-weight: 700; margin: 8px 0; }
+.period { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 12px; }
+.period input[type="month"] { width: auto; margin: 0; }
+.period .btn { margin: 0; }
+.btn.disabled { opacity: .45; pointer-events: none; }
+.ledger td:last-child { text-align: right; white-space: nowrap; }
+.pos { color: var(--ok); }
+.flow td:nth-child(n+2), .flow th:nth-child(n+2) { text-align: right; white-space: nowrap; }
+.under-card { margin: -8px 0 20px; }
+.table-plain { overflow-x: auto; margin-top: 20px; }
+.table-plain th { color: var(--ink); border-bottom: 1.5px solid var(--ink); }
+.stat-row > span { padding-right: 12px; }
+.stat-row b { white-space: nowrap; font-size: clamp(1.35rem, 6.5vw, 2rem); }

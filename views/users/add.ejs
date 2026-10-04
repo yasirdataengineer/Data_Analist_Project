@@ -1,0 +1,23 @@
+<%- include('../partials/head', { title: 'Tambah pengguna', back: '/pengguna' }) %>
+<%- include('../partials/pagehead', { back: '/pengguna', eyebrow: 'User Admin / Management', heading: 'Tambah pengguna', sub: 'Karyawan harus membuka bot One Hub sekali agar muncul di daftar ini.' }) %>
+<% if (!candidates.length) { %>
+  <div class="card empty">Belum ada karyawan baru yang membuka bot.</div>
+<% } else { %>
+<form class="card form" method="post" action="/pengguna">
+  <label>Karyawan (akun Telegram)
+    <select name="userId" required>
+      <% candidates.forEach(u => { %><option value="<%= u.id %>"><%= u.name %><%= u.username ? ' · @' + u.username : '' %><%= u.role ? ' (dicabut)' : '' %></option><% }) %>
+    </select>
+  </label>
+  <label>Peran
+    <select name="role">
+      <% assignable.forEach(r => { %><option value="<%= r %>" <%= r === 'karyawan' ? 'selected' : '' %>><%= ROLES[r] %></option><% }) %>
+    </select>
+  </label>
+  <label>Perusahaan
+    <select name="company"><% COMPANIES.forEach(c => { %><option><%= c %></option><% }) %></select>
+  </label>
+  <button class="btn">Berikan akses</button>
+</form>
+<% } %>
+<%- include('../partials/foot') %>

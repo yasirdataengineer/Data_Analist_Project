@@ -1,29 +1,46 @@
 <%- include('../partials/head', { title: 'Monitoring Progres', back: '/' }) %>
-<%- include('../partials/pagehead', { back: '/', eyebrow: 'Monitoring Progres', heading: 'Progres pekerjaan', sub: '' }) %>
+<%- include('../partials/pagehead', { back: '/', eyebrow: 'TJP / EJS', heading: 'Evaluasi & penugasan pekerjaan', sub: 'Isi persentase, hasil atau kendala, dan foto terbaru.' }) %>
 
-<div class="stats">
-  <div class="stat"><span class="num"><%= projects.length %></span><span>Proyek</span></div>
-  <div class="stat"><span class="num"><%= avg %>%</span><span>Rata-rata</span></div>
-  <div class="stat"><span class="num"><%= projects.filter(p => p.progress >= 100).length %></span><span>Selesai</span></div>
+<a class="btn btn-outline" href="/progres?f=<%= filter %><%= pic ? '&pic=' + pic : '' %>">Muat ulang</a>
+
+<% if (can('progress.assign')) { %>
+<div class="card callout">
+  <p class="muted">Evaluasi hasil, periksa foto, lalu tentukan Open atau Closed untuk pekerjaan.</p>
+  <a class="btn btn-block" href="/progres/baru">Tambah penugasan</a>
 </div>
+<% } %>
+
+<a class="card stat-row" href="/progres?f=open"><span>Perlu progres</span><b><%= stats.needProgress %></b></a>
+<a class="card stat-row" href="/progres?f=done"><span>100% / ditutup</span><b><%= stats.done %></b></a>
+<div class="card stat-row"><span>PIC dalam daftar</span><b><%= stats.pics %></b></div>
 
 <form class="search" method="get">
-  <input name="q" value="<%= q %>" placeholder="Cari kode, nama, lokasi…">
-  <a class="btn" href="/progres/baru">+ Proyek</a>
+  <select name="f" onchange="this.form.submit()">
+    <option value="open" <%= filter === 'open' ? 'selected' : '' %>>Perlu progres</option>
+    <option value="done" <%= filter === 'done' ? 'selected' : '' %>>100% / ditutup</option>
+    <option value="all" <%= filter === 'all' ? 'selected' : '' %>>Semua</option>
+  </select>
+  <% if (can('progress.viewAll')) { %>
+  <select name="pic" onchange="this.form.submit()">
+    <option value="">Semua PIC</option>
+    <% pics.forEach(p => { %><option value="<%= p.id %>" <%= pic === p.id ? 'selected' : '' %>><%= p.name %></option><% }) %>
+  </select>
+  <% } %>
 </form>
 
-<% if (!projects.length) { %>
-  <div class="card empty">Belum ada proyek. Tambahkan proyek pertama.</div>
-<% } %>
-<% projects.forEach(p => { %>
-  <a class="card card-link project" href="/progres/<%= p.id %>">
-    <% if (p.latestPhoto) { %><img class="thumb" src="<%= p.latestPhoto %>" alt="" loading="lazy"><% } %>
+<% if (!rows.length) { %><div class="card empty">Tidak ada pekerjaan di daftar ini.</div><% } %>
+<% rows.forEach(a => { %>
+  <a class="card card-link project" href="/progres/<%= a.id %>">
+    <% if (a.latestPhoto) { %><img class="thumb" src="<%= a.latestPhoto %>" alt="" loading="lazy"><% } %>
     <div class="grow">
-      <% if (p.code) { %><span class="tag"><%= p.code %></span><% } %>
-      <h2><%= p.name %></h2>
-      <p class="muted"><%= p.location || '—' %> · PIC <%= p.picName %></p>
-      <div class="bar"><span style="width: <%= p.progress %>%"></span></div>
-      <p class="row"><b><%= p.progress %>%</b><span class="muted"><%= p.lastUpdate ? 'Update ' + d.formatDateTime(p.lastUpdate.createdAt) : 'Belum ada update' %></span></p>
+      <div class="row">
+        <span class="tag"><%= a.projectName || 'Umum' %></span>
+        <span class="status <%= a.status === 'closed' ? 'status-closed' : 'status-open' %>"><%= a.status === 'closed' ? 'Closed' : 'Open' %></span>
+      </div>
+      <h2><%= a.title %></h2>
+      <p class="muted">PIC <%= a.picName %><%= a.dueDate ? ' · target ' + d.formatDate(a.dueDate) : '' %></p>
+      <div class="bar"><span style="width: <%= a.progress %>%"></span></div>
+      <p class="row"><b><%= a.progress %>%</b><span class="muted small"><%= a.lastUpdate ? 'Update ' + d.formatDateTime(a.lastUpdate.createdAt) : 'Belum ada update' %></span></p>
     </div>
   </a>
 <% }) %>

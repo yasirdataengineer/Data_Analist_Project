@@ -1,0 +1,22 @@
+<%- include('../partials/head', { title: 'Laporan absensi', back: '/' }) %>
+<%- include('../partials/pagehead', { back: '/', eyebrow: 'Sistem Absensi', heading: 'Laporan absensi tim', sub: d.formatDate(date) + ' · hadir ' + present + ' dari ' + rows.length }) %>
+<form class="search" method="get">
+  <input type="date" name="date" value="<%= date %>" onchange="this.form.submit()" aria-label="Tanggal">
+</form>
+<% if (!rows.length) { %><div class="card empty">Belum ada karyawan aktif.</div><% } %>
+<% rows.forEach(r => { %>
+  <div class="card compact">
+    <div class="row">
+      <b><%= r.user.name %></b>
+      <span class="status <%= r.record ? (r.record.checkOut ? 'status-closed' : 'status-transferred') : 'status-rejected' %>"><%= r.record ? (r.record.checkOut ? 'Lengkap' : 'Masuk') : 'Belum absen' %></span>
+    </div>
+    <p class="muted small">
+      Masuk <%= r.record ? d.formatTime(r.record.checkIn) : '-' %> · Pulang <%= r.record && r.record.checkOut ? d.formatTime(r.record.checkOut) : '-' %>
+      <% if (r.record && r.record.checkInLocation) { %> · <a href="https://maps.google.com/?q=<%= r.record.checkInLocation.lat %>,<%= r.record.checkInLocation.lng %>" target="_blank">lokasi</a><% } %>
+      <% if (r.overtime.length) { %> · lembur <%= r.overtime.map(o => o.start + '–' + o.end).join(', ') %><% } %>
+    </p>
+    <% if (r.plan) { %><p><b>Rencana:</b> <%= r.plan.tasks.join('; ') %></p><% } %>
+    <% if (r.report) { %><p><b>Laporan:</b> <%= r.report.summary %><% if (r.report.issues) { %> <span class="muted">· Kendala: <%= r.report.issues %></span><% } %></p><% } %>
+  </div>
+<% }) %>
+<%- include('../partials/foot') %>

@@ -1,0 +1,7 @@
+<a class="card card-link compact req" href="/proc/<%= r.id %>">
+  <span class="status status-<%= r.status %>"><%= STATUS[r.status] %></span>
+  <h2 class="item-title"><%= r.headline %></h2>
+  <p class="muted"><%= r.userName %><%= r.projectLabel ? ' — ' + r.projectLabel : ' — ' + r.categoryName %></p>
+  <p><%= r.description %></p>
+  <p class="muted small"><%= r.number %> · <%= d.formatDateTime(r.createdAt) %><% if (r.transferredTotal) { %> · ditransfer <%= d.rupiah(r.transferredTotal) %><% } %></p>
+</a>

@@ -1,8 +1,8 @@
-<%- include('../partials/head', { title: 'Koreksi lembur', back: '/payroll' }) %>
-<%- include('../partials/pagehead', { back: '/payroll', eyebrow: 'Sistem Payroll', heading: 'Koreksi lembur', sub: 'Perbaiki jam lembur yang salah, atau ajukan lembur yang belum tercatat.' }) %>
+<%- include('../partials/head', { title: 'Koreksi lembur', back: can('payroll.self') ? '/payroll' : '/payroll/rekap' }) %>
+<%- include('../partials/pagehead', { back: can('payroll.self') ? '/payroll' : '/payroll/rekap', eyebrow: 'Sistem Payroll', heading: 'Koreksi lembur', sub: 'Perbaiki jam lembur yang salah, atau ajukan lembur yang belum tercatat.' }) %>
 <% const label = { pending: 'Menunggu', approved: 'Disetujui', rejected: 'Ditolak' }; %>
 
-<% if (isAdmin && pending.length) { %>
+<% if (can('payroll.manage') && pending.length) { %>
 <h3 class="section">Perlu persetujuan</h3>
 <% pending.forEach(c => { %>
   <div class="card">
@@ -20,6 +20,7 @@
 <% }) %>
 <% } %>
 
+<% if (can('payroll.self')) { %>
 <h3 class="section">Ajukan koreksi</h3>
 <form class="card form" method="post" action="/payroll/koreksi">
   <label>Lembur yang dikoreksi
@@ -45,4 +46,5 @@
     <p class="muted"><%= c.reason %></p>
   </div>
 <% }) %>
+<% } %>
 <%- include('../partials/foot') %>

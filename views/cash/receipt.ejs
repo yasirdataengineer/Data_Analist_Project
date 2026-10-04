@@ -1,0 +1,18 @@
+<%- include('../partials/head', { title: 'Input penerimaan project', back: '/kas?tab=cashflow' }) %>
+<%- include('../partials/pagehead', { back: '/kas?tab=cashflow', eyebrow: 'Cash Flow Project', heading: 'Input penerimaan project', sub: 'Penerimaan proyek tidak otomatis menambah Petty Cash.' }) %>
+<% if (!projects.length) { %>
+  <div class="card empty">Belum ada project. <a href="/kas/project">Input project</a> dulu.</div>
+<% } else { %>
+<form class="card form" method="post" action="/kas/penerimaan">
+  <label>Project
+    <select name="projectId" required>
+      <% projects.forEach(p => { %><option value="<%= p.id %>" <%= selected === p.id ? 'selected' : '' %>><%= p.code %> — <%= p.name %></option><% }) %>
+    </select>
+  </label>
+  <label>Nominal (Rp)<input name="amount" inputmode="numeric" required></label>
+  <label>Tanggal diterima<input type="date" name="date" value="<%= today %>" required></label>
+  <label>Keterangan<input name="note" placeholder="mis. Termin 1 / DP"></label>
+  <button class="btn">Simpan penerimaan</button>
+</form>
+<% } %>
+<%- include('../partials/foot') %>

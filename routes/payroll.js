@@ -8,14 +8,14 @@ const { payslipFor } = require('../lib/payroll');
 const MONTH_RE = /^\d{4}-\d{2}$/;
 const TIME_RE = /^\d{2}:\d{2}$/;
 
-module.exports = ({ store, config, isAdmin }) => {
+module.exports = ({ store, config, need }) => {
   const router = express.Router();
 
   const userName = (id) => store.find('users', (u) => u.id === id)?.name || '-';
   const pickMonth = (q) => (MONTH_RE.test(q || '') ? q : monthKey());
   const finalized = (userId, month) => store.find('payrolls', (p) => p.userId === userId && p.month === month);
   const requireAdmin = (req) => {
-    if (!isAdmin(req.user)) throw badRequest('Hanya admin yang bisa melakukan ini.');
+    if (!req.can('payroll.manage')) throw badRequest('Hanya pemilik/admin yang bisa melakukan ini.');
   };
   // Once a month is paid out, its inputs are frozen.
   const assertOpen = (userId, month) => {
@@ -24,7 +24,10 @@ module.exports = ({ store, config, isAdmin }) => {
 
   // --- Slip gaji (own) ------------------------------------------------------
 
+  const employees = () => store.filter('users', (u) => u.active && u.role === 'karyawan');
+
   router.get('/', (req, res) => {
+    if (!req.can('payroll.self')) return res.redirect(`/payroll/rekap${req.query.bulan ? `?bulan=${req.query.bulan}` : ''}`);
     const month = pickMonth(req.query.bulan);
     const paid = finalized(req.user.id, month);
     const uid = req.user.id;
@@ -34,10 +37,6 @@ module.exports = ({ store, config, isAdmin }) => {
       paid,
       pendingCash: store.filter('cashAdvances', (c) => c.userId === uid && c.status === 'pending').length,
       pendingCorr: store.filter('overtimeCorrections', (c) => c.userId === uid && c.status === 'pending').length,
-      approvals: isAdmin(req.user)
-        ? store.filter('cashAdvances', (c) => c.status === 'pending').length +
-          store.filter('overtimeCorrections', (c) => c.status === 'pending').length
-        : 0,
     });
   });
 
@@ -46,12 +45,21 @@ module.exports = ({ store, config, isAdmin }) => {
   router.get('/rekap', (req, res) => {
     requireAdmin(req);
     const month = pickMonth(req.query.bulan);
-    const rows = store.all('users').map((u) => {
+    const rows = employees().map((u) => {
       const paid = finalized(u.id, month);
       return { user: u, paid, slip: paid ? paid.slip : payslipFor(store, u.id, month) };
     });
     const total = rows.reduce((s, r) => s + r.slip.net, 0);
-    res.render('payroll/recap', { month, rows, total });
+    res.render('payroll/recap', {
+      month,
+      rows,
+      total,
+      approvals: {
+        overtime: store.filter('overtime', (o) => o.status === 'pending').length,
+        cash: store.filter('cashAdvances', (c) => c.status === 'pending').length,
+        corrections: store.filter('overtimeCorrections', (c) => c.status === 'pending').length,
+      },
+    });
   });
 
   router.post('/rekap/finalisasi', (req, res) => {
@@ -75,7 +83,7 @@ module.exports = ({ store, config, isAdmin }) => {
 
   router.get('/gaji', (req, res) => {
     requireAdmin(req);
-    const rows = store.all('users').map((u) => ({ user: u, salary: store.find('salaries', (s) => s.userId === u.id) || {} }));
+    const rows = employees().map((u) => ({ user: u, salary: store.find('salaries', (s) => s.userId === u.id) || {} }));
     res.render('payroll/salary', { rows });
   });
 
@@ -101,17 +109,46 @@ module.exports = ({ store, config, isAdmin }) => {
     res.redirect(`/payroll/gaji?ok=Gaji ${user.name} tersimpan`);
   });
 
+  // --- Persetujuan lembur (diajukan dari Sistem Absensi) ----------------------
+
+  router.get('/lembur', (req, res) => {
+    requireAdmin(req);
+    const pending = store
+      .filter('overtime', (o) => o.status === 'pending')
+      .sort((a, b) => a.date.localeCompare(b.date))
+      .map((o) => ({ ...o, userName: userName(o.userId) }));
+    const recent = store
+      .filter('overtime', (o) => o.status !== 'pending')
+      .sort((a, b) => (b.decidedAt || '').localeCompare(a.decidedAt || ''))
+      .slice(0, 20)
+      .map((o) => ({ ...o, userName: userName(o.userId) }));
+    res.render('payroll/overtime', { pending, recent });
+  });
+
+  router.post('/lembur/:id/:action(approve|reject)', (req, res, next) => {
+    requireAdmin(req);
+    const ot = store.find('overtime', (o) => o.id === req.params.id);
+    if (!ot) return next();
+    if (ot.status !== 'pending') throw badRequest('Pengajuan ini sudah diproses.');
+    assertOpen(ot.userId, ot.date.slice(0, 7));
+    const status = req.params.action === 'approve' ? 'approved' : 'rejected';
+    store.update('overtime', ot.id, { status, decidedBy: req.user.id, decidedAt: new Date().toISOString() });
+    // The requester's Telegram user id doubles as their private chat id with the bot.
+    notify(config, ot.userId, `Pengajuan lembur ${ot.date} ${ot.start}–${ot.end} ${status === 'approved' ? '✅ disetujui' : '❌ ditolak'} oleh ${req.user.name}`);
+    res.redirect('/payroll/lembur?ok=Pengajuan diproses');
+  });
+
   // --- Kasbon ---------------------------------------------------------------
 
   router.get('/kasbon', (req, res) => {
     const mine = store.filter('cashAdvances', (c) => c.userId === req.user.id).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-    const pending = isAdmin(req.user)
+    const pending = req.can('payroll.manage')
       ? store.filter('cashAdvances', (c) => c.status === 'pending').map((c) => ({ ...c, userName: userName(c.userId) }))
       : [];
     res.render('payroll/cash', { mine, pending, month: monthKey() });
   });
 
-  router.post('/kasbon', (req, res) => {
+  router.post('/kasbon', need('payroll.self'), (req, res) => {
     const amount = Number(String(req.body.amount || '').replace(/[^\d]/g, ''));
     if (!amount || amount <= 0) throw badRequest('Nominal kasbon wajib diisi.');
     if (!req.body.reason?.trim()) throw badRequest('Keperluan kasbon wajib diisi.');
@@ -140,7 +177,7 @@ module.exports = ({ store, config, isAdmin }) => {
     const uid = req.user.id;
     const myOvertime = store.filter('overtime', (o) => o.userId === uid && o.status === 'approved').sort((a, b) => b.date.localeCompare(a.date)).slice(0, 30);
     const mine = store.filter('overtimeCorrections', (c) => c.userId === uid).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-    const pending = isAdmin(req.user)
+    const pending = req.can('payroll.manage')
       ? store.filter('overtimeCorrections', (c) => c.status === 'pending').map((c) => ({
           ...c,
           userName: userName(c.userId),
@@ -150,7 +187,7 @@ module.exports = ({ store, config, isAdmin }) => {
     res.render('payroll/correction', { myOvertime, mine, pending, today: todayKey() });
   });
 
-  router.post('/koreksi', (req, res) => {
+  router.post('/koreksi', need('payroll.self'), (req, res) => {
     const { overtimeId, date, start, end, reason } = req.body;
     if (!TIME_RE.test(start || '') || !TIME_RE.test(end || '')) throw badRequest('Jam mulai dan selesai wajib diisi.');
     if (!reason?.trim()) throw badRequest('Alasan koreksi wajib diisi.');

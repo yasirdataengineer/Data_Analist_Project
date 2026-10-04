@@ -1,0 +1,10 @@
+<%- include('../partials/head', { title: 'Input project', back: '/kas?tab=cashflow' }) %>
+<%- include('../partials/pagehead', { back: '/kas?tab=cashflow', eyebrow: 'Cash Flow Project', heading: 'Input project' }) %>
+<form class="card form" method="post" action="/kas/project">
+  <label>Kode project *<input name="code" required placeholder="DT001"></label>
+  <label>Nama project *<input name="name" required placeholder="Data Center SMX"></label>
+  <label>Klien<input name="client"></label>
+  <label>Nilai kontrak (Rp)<input name="contractValue" inputmode="numeric"></label>
+  <button class="btn">Simpan project</button>
+</form>
+<%- include('../partials/foot') %>

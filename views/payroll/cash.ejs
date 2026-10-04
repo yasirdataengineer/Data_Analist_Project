@@ -1,8 +1,8 @@
-<%- include('../partials/head', { title: 'Kasbon', back: '/payroll' }) %>
-<%- include('../partials/pagehead', { back: '/payroll', eyebrow: 'Sistem Payroll', heading: 'Kasbon' }) %>
+<%- include('../partials/head', { title: 'Kasbon', back: can('payroll.self') ? '/payroll' : '/payroll/rekap' }) %>
+<%- include('../partials/pagehead', { back: can('payroll.self') ? '/payroll' : '/payroll/rekap', eyebrow: 'Sistem Payroll', heading: 'Kasbon' }) %>
 <% const label = { pending: 'Menunggu', approved: 'Disetujui', rejected: 'Ditolak' }; %>
 
-<% if (isAdmin && pending.length) { %>
+<% if (can('payroll.manage') && pending.length) { %>
 <h3 class="section">Perlu persetujuan</h3>
 <% pending.forEach(c => { %>
   <div class="card">
@@ -17,6 +17,7 @@
 <% }) %>
 <% } %>
 
+<% if (can('payroll.self')) { %>
 <h3 class="section">Ajukan kasbon</h3>
 <form class="card form" method="post" action="/payroll/kasbon">
   <label>Nominal (Rp)<input name="amount" inputmode="numeric" required placeholder="500000"></label>
@@ -33,4 +34,5 @@
     <p class="muted"><%= c.reason %> · potong <%= d.formatMonth(c.deductMonth) %></p>
   </div>
 <% }) %>
+<% } %>
 <%- include('../partials/foot') %>
