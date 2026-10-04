@@ -7,7 +7,7 @@ const path = require('path');
 
 const { createApp } = require('../app');
 const { Store } = require('../lib/store');
-const { validateInitData } = require('../lib/telegram');
+const { validateInitData, signBotPayload } = require('../lib/telegram');
 const { minutesBetween } = require('../lib/dates');
 const { overtimePay } = require('../lib/payroll');
 
@@ -32,6 +32,7 @@ before(async () => {
     ownerIds: ['1'],
     sessionSecret: 'test-secret',
     devLogin: false,
+    botUsername: 'tjp_onehub_bot',
     uploadDir: path.join(tmp, 'uploads'),
   };
   const app = createApp(config, new Store(path.join(tmp, 'db.json')));
@@ -268,4 +269,72 @@ test('proc types and categories are configurable', async () => {
   const form = await html('/proc/baru', admin);
   assert.match(form, /Sewa alat/);
   assert.match(form, /data-project="1">Workshop/);
+});
+
+// --- PWA & Masuk dengan Telegram ---------------------------------------------
+
+test('PWA: manifest, service worker and install tags are served', async () => {
+  const manifest = await (await fetch(`${base}/manifest.webmanifest`)).json();
+  assert.strictEqual(manifest.display, 'standalone');
+  assert.ok(manifest.icons.some((i) => i.sizes === '512x512' && i.purpose === 'maskable'));
+  const sw = await fetch(`${base}/sw.js`);
+  assert.strictEqual(sw.status, 200);
+  assert.match(sw.headers.get('content-type'), /javascript/);
+  const login = await html('/login', '');
+  assert.match(login, /rel="manifest"/);
+  assert.match(login, /Masuk dengan Telegram/);
+  assert.strictEqual((await fetch(`${base}/public/offline.html`)).status, 200);
+});
+
+const botCall = (path, payload, token = BOT_TOKEN) =>
+  fetch(base + path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(signBotPayload(token, payload)) });
+
+async function startBotLogin() {
+  const res = await fetch(`${base}/auth/bot/start`, { method: 'POST' });
+  assert.strictEqual(res.status, 200);
+  const data = await res.json();
+  const token = data.link.match(/start=login_([0-9a-f]{32})$/)[1];
+  assert.ok(data.link.startsWith('https://t.me/tjp_onehub_bot?start=login_'));
+  return { ...data, token, cookie: res.headers.get('set-cookie').split(';')[0] };
+}
+
+test('bot login: code shown by the bot, confirmed in Telegram, browser gets a session', async () => {
+  const { token, code, cookie } = await startBotLogin();
+  const status = async (c) => (await (await get('/auth/bot/status', c)).json()).status;
+  assert.strictEqual(await status(cookie), 'pending');
+
+  // Forged requests from anything other than the bot are rejected.
+  assert.strictEqual((await botCall('/auth/bot/confirm', { token, approve: true, user: { id: 1 } }, '999:FAKE')).status, 401);
+  const lookup = await (await botCall('/auth/bot/lookup', { token })).json();
+  assert.strictEqual(lookup.code, code);
+
+  const confirm = await (await botCall('/auth/bot/confirm', { token, approve: true, user: { id: 1, first_name: 'Pak', last_name: 'yasir', username: 'yasir' } })).json();
+  assert.strictEqual(confirm.active, true);
+
+  // Another browser can't take over the confirmed request.
+  assert.strictEqual(await status(''), 'expired');
+
+  const res = await get('/auth/bot/status', cookie);
+  assert.strictEqual((await res.json()).status, 'confirmed');
+  const session = res.headers.get('set-cookie').split(/,(?=\s*\w+=)/).find((c) => c.trim().startsWith('tjp_sid=')).split(';')[0].trim();
+  assert.match(await html('/', session), /Pak yasir/);
+
+  // One-shot: the same request can't be used twice.
+  assert.strictEqual(await status(cookie), 'expired');
+  assert.strictEqual((await botCall('/auth/bot/confirm', { token, approve: true, user: { id: 1 } })).status, 404);
+});
+
+test('bot login: "Bukan saya" denies; new users land on the pending page', async () => {
+  let r = await startBotLogin();
+  await botCall('/auth/bot/confirm', { token: r.token, approve: false, user: { id: 99, first_name: 'X' } });
+  assert.strictEqual((await (await get('/auth/bot/status', r.cookie)).json()).status, 'denied');
+
+  r = await startBotLogin();
+  const confirm = await (await botCall('/auth/bot/confirm', { token: r.token, approve: true, user: { id: 98, first_name: 'Karyawan', last_name: 'Baru' } })).json();
+  assert.strictEqual(confirm.active, false);
+  const res = await get('/auth/bot/status', r.cookie);
+  const session = res.headers.get('set-cookie').split(/,(?=\s*\w+=)/).find((c) => c.trim().startsWith('tjp_sid=')).split(';')[0].trim();
+  const page = await get('/', session);
+  assert.strictEqual(page.status, 403);
+  assert.match(await page.text(), /Akses belum aktif/);
 });

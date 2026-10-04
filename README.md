@@ -26,7 +26,22 @@ Aturan uang: hanya transfer dari **Petty Cash** yang mengurangi saldo kas; trans
 
 Upah lembur memakai aturan Kepmenakertrans 102/2004 untuk hari kerja: upah per jam = gaji pokok ÷ 173, jam pertama ×1,5, jam berikutnya ×2.
 
-Login otomatis memakai akun Telegram. `initData` dari Mini App diverifikasi di server dengan HMAC token bot, jadi tidak perlu username/password.
+## Cara membuka aplikasi
+
+1. **Di dalam Telegram (Mini App):** buka bot, tekan tombol menu **One Hub**. Login otomatis karena `initData` dari Telegram diverifikasi di server dengan HMAC token bot.
+2. **Sebagai aplikasi terpasang (PWA) di Android, iPhone, atau desktop:** buka URL aplikasi di browser, tekan **Masuk dengan Telegram**, lalu **Pasang**.
+   - **Android / Chrome / Edge desktop:** tombol **Pasang** di halaman utama memunculkan dialog instalasi.
+   - **iPhone / iPad:** buka di Safari → **Bagikan** → **Tambah ke Layar Utama**.
+
+### Masuk dengan Telegram (di luar Telegram)
+
+Tidak ada password. Aplikasi menampilkan kode 4 digit dan tombol **Buka Telegram** (`t.me/<bot>?start=login_…`). Bot menampilkan kode yang sama dan meminta konfirmasi **"Ya, ini saya"**. Setelah dikonfirmasi, aplikasi langsung masuk. Detailnya:
+- Link berlaku 5 menit dan hanya bisa dipakai sekali. Permintaan login terikat ke browser yang memulainya lewat cookie bertanda tangan.
+- Pencocokan kode mencegah orang lain mengirim link login miliknya ke korban.
+- `bot.js` mengonfirmasi ke server lewat `/auth/bot/lookup` dan `/auth/bot/confirm` dengan tanda tangan HMAC dari token bot, jadi hanya proses yang memegang token yang bisa mengonfirmasi.
+- Sesi berlaku 30 hari. Tombol **Keluar** ada di bagian bawah halaman utama.
+
+PWA menyimpan file statis (CSS, JS, ikon) untuk mempercepat pembukaan dan menampilkan halaman offline saat tidak ada sinyal. Halaman berisi data pribadi atau keuangan **tidak** disimpan di cache.
 
 ## Menjalankan
 
@@ -47,7 +62,7 @@ Tes: `npm test`
 
 1. Buat bot di [@BotFather](https://t.me/BotFather) dan salin tokennya ke `TELEGRAM_BOT_TOKEN`.
 2. Deploy `server.js` ke URL **HTTPS** publik (syarat Telegram Mini App) dan isi `WEBAPP_URL`.
-3. Jalankan `npm run bot`. Bot memasang tombol menu **One Hub** dan membalas `/start` dengan tombol untuk membuka aplikasi.
+3. Jalankan `npm run bot`. Bot memasang tombol menu **One Hub**, membalas `/start` dengan tombol untuk membuka aplikasi, dan menangani konfirmasi **Masuk dengan Telegram**. Bot menghubungi server di `WEBAPP_URL`, atau di `APP_INTERNAL_URL` bila diisi (mis. `http://localhost:3000` jika satu mesin).
 4. Notifikasi: tambahkan bot ke grup, kirim `/id`, lalu isi `TELEGRAM_NOTIFY_CHAT_ID` dengan ID tersebut.
 5. Isi `OWNER_TELEGRAM_IDS` dengan ID Telegram pemilik. Karyawan lain cukup membuka bot sekali (statusnya "menunggu akses", pemilik mendapat notifikasi), lalu pemilik/admin menambahkannya di **User Admin / Management**.
 
@@ -56,7 +71,7 @@ Tes: `npm test`
 ```
 server.js            entry point + konfigurasi dari env
 app.js               Express app, auth Telegram, routing
-bot.js               bot long-polling (menu button, /start, /id)
+bot.js               bot long-polling (menu button, /start, /id, konfirmasi login)
 routes/progress.js    Monitoring Progres (penugasan & evaluasi)
 routes/attendance.js  Sistem Absensi
 routes/payroll.js     Sistem Payroll (perhitungan di lib/payroll.js)
@@ -65,7 +80,7 @@ routes/cash.js        Lap Pettycash, Approval & Transfer, Cash Flow Project (atu
 routes/users.js       User Admin / Management (peran di lib/access.js)
 lib/                  store JSON, validasi Telegram, sesi, tanggal (WIB)
 views/               template EJS
-public/              CSS + script Mini App
+public/              CSS, script, manifest PWA, service worker, ikon, halaman offline
 data/                db.json & foto upload (dibuat otomatis, tidak di-commit)
 ```
 

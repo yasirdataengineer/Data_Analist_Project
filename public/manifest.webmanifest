@@ -1,0 +1,23 @@
+{
+  "name": "TJP-EJS One Hub",
+  "short_name": "One Hub",
+  "description": "Satu pintu untuk pekerjaan Anda: progres, absensi, payroll, pengajuan dana, petty cash, dan cash flow project.",
+  "lang": "id",
+  "start_url": "/?source=pwa",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f4f7fb",
+  "theme_color": "#13294b",
+  "icons": [
+    { "src": "/public/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/public/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/public/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
+    { "src": "/public/icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ],
+  "shortcuts": [
+    { "name": "Absensi", "url": "/absensi", "icons": [{ "src": "/public/icons/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Buat pengajuan", "url": "/proc/baru", "icons": [{ "src": "/public/icons/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Monitoring Progres", "url": "/progres", "icons": [{ "src": "/public/icons/icon-192.png", "sizes": "192x192" }] }
+  ]
+}

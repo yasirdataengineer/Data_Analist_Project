@@ -4,8 +4,9 @@ const express = require('express');
 const multer = require('multer');
 const crypto = require('crypto');
 
-const { validateInitData, notify } = require('./lib/telegram');
-const { setSession, clearSession, getSessionUserId } = require('./lib/session');
+const { validateInitData, notify, callBotApi, verifyBotPayload } = require('./lib/telegram');
+const { setSession, clearSession, getSessionUserId, setSignedCookie, getSignedCookie, clearCookie } = require('./lib/session');
+const { BotLoginRequests } = require('./lib/botLogin');
 const { ROLES, can } = require('./lib/access');
 const { badRequest } = require('./lib/errors');
 const dates = require('./lib/dates');
@@ -43,6 +44,14 @@ function createApp(config, store) {
   app.use(express.urlencoded({ extended: false }));
   app.use(express.json());
   app.use('/public', express.static(path.join(__dirname, 'public')));
+  // The service worker must be served from the root so its scope covers the whole app.
+  app.get('/sw.js', (req, res) => {
+    res.set('Cache-Control', 'no-cache');
+    res.sendFile(path.join(__dirname, 'public', 'sw.js'));
+  });
+  app.get('/manifest.webmanifest', (req, res) => {
+    res.type('application/manifest+json').sendFile(path.join(__dirname, 'public', 'manifest.webmanifest'));
+  });
   app.use('/uploads', express.static(config.uploadDir));
 
   // Owners listed in env are always active owners, so the first login can bootstrap everything else.
@@ -71,7 +80,10 @@ function createApp(config, store) {
 
   // --- Auth -----------------------------------------------------------------
 
-  app.get('/login', (req, res) => res.render('login', { devLogin: config.devLogin }));
+  app.get('/login', (req, res) => {
+    if (req.user?.active) return res.redirect('/');
+    res.render('login', { devLogin: config.devLogin, botLogin: !!config.botToken });
+  });
 
   const afterLogin = (user, isNew) => {
     user = applyOwner(user);
@@ -101,6 +113,66 @@ function createApp(config, store) {
     user = afterLogin(user, isNew);
     setSession(res, user.id, config.sessionSecret);
     res.redirect('/');
+  });
+
+  // --- Masuk dengan Telegram (installed app / browser) ----------------------
+
+  const botLogins = new BotLoginRequests({ ttlMs: config.botLoginTtlMs });
+  const LOGIN_COOKIE = 'tjp_login';
+  let botUsername = config.botUsername || null;
+  const getBotUsername = async () => {
+    if (!botUsername) botUsername = (await callBotApi(config.botToken, 'getMe', {})).username;
+    return botUsername;
+  };
+
+  app.post('/auth/bot/start', async (req, res, next) => {
+    try {
+      if (!config.botToken) return res.status(503).json({ ok: false, error: 'Bot belum dikonfigurasi.' });
+      if (botLogins.requests.size > 1000) return res.status(429).json({ ok: false, error: 'Terlalu banyak permintaan, coba lagi.' });
+      const username = await getBotUsername();
+      const { token, code, browserSecret } = botLogins.create();
+      setSignedCookie(res, LOGIN_COOKIE, `${token}:${browserSecret}`, config.sessionSecret, Math.ceil(botLogins.ttlMs / 1000));
+      res.json({ ok: true, code, link: `https://t.me/${username}?start=login_${token}`, expiresIn: Math.floor(botLogins.ttlMs / 1000) });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  app.get('/auth/bot/status', (req, res) => {
+    const [token, browserSecret] = (getSignedCookie(req, LOGIN_COOKIE, config.sessionSecret) || '').split(':');
+    const r = token && botLogins.consume(token, browserSecret);
+    if (!r) {
+      clearCookie(res, LOGIN_COOKIE);
+      return res.json({ status: 'expired' });
+    }
+    if (r.status !== 'confirmed') {
+      if (r.status === 'denied') clearCookie(res, LOGIN_COOKIE);
+      return res.json({ status: r.status });
+    }
+    const user = store.find('users', (u) => u.id === String(r.user.id));
+    clearCookie(res, LOGIN_COOKIE);
+    setSession(res, user.id, config.sessionSecret);
+    res.json({ status: 'confirmed' });
+  });
+
+  // Called by bot.js (signed with the bot token). Returns the code so the bot can show it.
+  app.post('/auth/bot/lookup', (req, res) => {
+    if (!verifyBotPayload(config.botToken, req.body)) return res.status(401).json({ ok: false });
+    const r = botLogins.get(String(req.body.token));
+    if (!r || r.status !== 'pending') return res.status(404).json({ ok: false });
+    res.json({ ok: true, code: r.code });
+  });
+
+  app.post('/auth/bot/confirm', (req, res) => {
+    if (!verifyBotPayload(config.botToken, req.body)) return res.status(401).json({ ok: false });
+    const tgUser = req.body.user;
+    if (!tgUser || !tgUser.id) return res.status(400).json({ ok: false });
+    const r = botLogins.resolve(String(req.body.token), req.body.approve === true, tgUser);
+    if (!r) return res.status(404).json({ ok: false });
+    if (r.status !== 'confirmed') return res.json({ ok: true, status: r.status });
+    const isNew = !store.find('users', (u) => u.id === String(tgUser.id));
+    const user = afterLogin(store.upsertUser(tgUser), isNew);
+    res.json({ ok: true, status: r.status, active: !!user.active });
   });
 
   app.post('/logout', (req, res) => {

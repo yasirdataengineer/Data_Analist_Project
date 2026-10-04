@@ -22,6 +22,7 @@
 }
 
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
 html, body { margin: 0; }
 body {
   background: var(--bg);
@@ -215,3 +216,13 @@ tr:last-child td { border-bottom: 0; }
 .table-plain th { color: var(--ink); border-bottom: 1.5px solid var(--ink); }
 .stat-row > span { padding-right: 12px; }
 .stat-row b { white-space: nowrap; font-size: clamp(1.35rem, 6.5vw, 2rem); }
+
+/* PWA & bot login */
+.topbar { padding-top: max(18px, env(safe-area-inset-top)); }
+.wrap { padding-bottom: max(48px, env(safe-area-inset-bottom)); }
+.install { border-color: rgba(31, 79, 180, .3); }
+.install .btn { flex: none; }
+.login-code { font-size: 2.6rem; font-weight: 800; letter-spacing: .3em; text-align: center; margin: 4px 0 16px; font-variant-numeric: tabular-nums; }
+#bot-login .btn-block { text-align: center; margin-bottom: 12px; }
+.footer { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+.logout { margin: 0; }

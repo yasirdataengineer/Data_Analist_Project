@@ -7,6 +7,8 @@ const config = {
   appName: process.env.APP_NAME || 'TJP-EJS One Hub',
   port: Number(process.env.PORT) || 3000,
   botToken: process.env.TELEGRAM_BOT_TOKEN || '',
+  // Optional: looked up with getMe on first "Masuk dengan Telegram" if not set.
+  botUsername: (process.env.TELEGRAM_BOT_USERNAME || '').replace(/^@/, ''),
   notifyChatId: process.env.TELEGRAM_NOTIFY_CHAT_ID || '',
   ownerIds: (process.env.OWNER_TELEGRAM_IDS || '').split(',').map((s) => s.trim()).filter(Boolean),
   sessionSecret: process.env.SESSION_SECRET || crypto.randomBytes(32).toString('hex'),

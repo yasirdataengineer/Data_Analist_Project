@@ -16,6 +16,43 @@
     }
   }
 
+  const inTelegram = !!(tg && tg.initData);
+  const standalone = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+  document.documentElement.classList.toggle('standalone', standalone);
+
+  // Installable app: offline page + cached assets. Not needed inside Telegram's webview.
+  if (!inTelegram && 'serviceWorker' in navigator) {
+    window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(() => {}));
+  }
+
+  // "Pasang aplikasi": Android/desktop get the native prompt; iPhone gets Add-to-Home-Screen steps.
+  const install = document.querySelector('[data-install]');
+  if (install && !inTelegram && !standalone) {
+    const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    const btn = install.querySelector('button');
+    const iosHint = install.querySelector('[data-install-ios]');
+    let deferred = null;
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferred = e;
+      install.hidden = false;
+    });
+    btn.addEventListener('click', async () => {
+      if (deferred) {
+        deferred.prompt();
+        await deferred.userChoice.catch(() => {});
+        deferred = null;
+        install.hidden = true;
+      } else if (iosHint) {
+        iosHint.hidden = false;
+      }
+    });
+    if (isIOS) {
+      install.hidden = false;
+    }
+    window.addEventListener('appinstalled', () => { install.hidden = true; });
+  }
+
   const clock = document.querySelector('[data-clock]');
   if (clock) {
     const tick = () => {
